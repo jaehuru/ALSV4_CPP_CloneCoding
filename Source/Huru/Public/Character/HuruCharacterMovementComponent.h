@@ -23,8 +23,11 @@ public:
 	/** 이동 설정 변수*/
 	UPROPERTY()
 	uint8 bRequestMovementSettingsChange = 1;
+
+	UPROPERTY()
+	EHuruGait AllowedGait = EHuruGait::Walking;
 	
-	UPROPERTY(BlueprintReadOnly, Category = "ALS|Movement System")
+	UPROPERTY(BlueprintReadOnly, Category = "Huru|Movement System")
 	FHuruMovementSettings CurrentMovementSettings;
 	
 	//=====================================================================================
@@ -32,4 +35,11 @@ public:
 	//=====================================================================================
 	UFUNCTION(BlueprintCallable, Category = "Movement Settings")
 	void SetMovementSettings(FHuruMovementSettings NewMovementSettings);
+
+	/** 최대 걷기 속도를 설정함 (소유 클라이언트에서 호출됨) */
+	UFUNCTION(BlueprintCallable, Category = "Movement Settings")
+	void SetAllowedGait(EHuruGait NewAllowedGait);
+
+	UFUNCTION(Reliable, Server, Category = "Movement Settings")
+	void Server_SetAllowedGait(EHuruGait NewAllowedGait);
 };
