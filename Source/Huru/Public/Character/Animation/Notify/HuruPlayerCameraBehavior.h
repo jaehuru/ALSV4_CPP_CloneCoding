@@ -8,8 +8,8 @@
 
 #include "HuruPlayerCameraBehavior.generated.h"
 
-class AALSBaseCharacter;
-class AALSPlayerController;
+class AHuruBaseCharacter;
+class AHuruPlayerController;
 
 /**
  * Main class for player camera movement behavior
@@ -49,9 +49,7 @@ public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Read Only Data|Character Information")
 	bool bRightShoulder = false;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Read Only Data|Character Information")
-	bool bDebugView = false;
+	
 	//=====================================================================================
 	//                                   FUNCTIONS
 	//=====================================================================================

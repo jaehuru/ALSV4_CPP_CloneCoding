@@ -10,7 +10,13 @@
 #include "Kismet/KismetSystemLibrary.h"
 #include "Net/UnrealNetwork.h"
 
-const FName NAME_Pelvis(TEXT("Pelvis"));
+const FName NAME_FP_Camera(TEXT("FP_Camera"));
+const FName NAME_RotationAmount(TEXT("RotationAmount"));
+const FName NAME_YawOffset(TEXT("YawOffset"));
+const FName NAME_Pelvis(TEXT("Pelvis")); // Socket
+const FName NAME_pelvis(TEXT("pelvis")); // Bone
+const FName NAME_root(TEXT("root"));
+const FName NAME_spine_05(TEXT("spine_05"));
 
 
 AHuruBaseCharacter::AHuruBaseCharacter(const FObjectInitializer& ObjectInitializer)
@@ -72,7 +78,7 @@ void AHuruBaseCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	// Set required values
+	// 필요한 값들을 설정함
 	SetEssentialValues(DeltaTime);
 
 	if (MovementState == EHuruMovementState::Grounded)
@@ -89,7 +95,7 @@ void AHuruBaseCharacter::Tick(float DeltaTime)
 		RagdollUpdate(DeltaTime);
 	}
 
-	// Cache values
+	// 반복적으로 사용될 값을 캐싱
 	PreviousVelocity = GetVelocity();
 	PreviousAimYaw = AimingRotation.Yaw;
 }
@@ -163,6 +169,17 @@ void AHuruBaseCharacter::RagdollStart()
 
 	// 이동 복제 비활성화
 	SetReplicateMovement(false);
+}
+
+void AHuruBaseCharacter::Server_SetMeshLocationDuringRagdoll_Implementation(FVector MeshLocation)
+{
+	TargetRagdollLocation = MeshLocation;
+}
+
+void AHuruBaseCharacter::SetActorLocationAndTargetRotation(FVector NewLocation, FRotator NewRotation)
+{
+	SetActorLocationAndRotation(NewLocation, NewRotation);
+	TargetRotation = NewRotation;
 }
 
 void AHuruBaseCharacter::SetMovementState(EHuruMovementState NewState, bool bForce)
@@ -438,6 +455,11 @@ bool AHuruBaseCharacter::CanSprint() const
 	return false;
 }
 
+FVector AHuruBaseCharacter::GetMovementInput() const
+{
+	return ReplicatedCurrentAcceleration;
+}
+
 void AHuruBaseCharacter::Replicated_PlayMontage_Implementation(UAnimMontage* Montage, float PlayRate)
 {
 	// Roll: Simply play a Root Motion Montage.
@@ -456,6 +478,30 @@ void AHuruBaseCharacter::SetRightShoulder(bool bNewRightShoulder)
 	{
 		CameraBehavior->bRightShoulder = bRightShoulder;
 	}
+}
+
+ECollisionChannel AHuruBaseCharacter::GetThirdPersonTraceParams(FVector& TraceOrigin, float& TraceRadius)
+{
+	TraceOrigin = GetActorLocation();
+	TraceRadius = 10.0f;
+	return ECC_Visibility;
+}
+
+FTransform AHuruBaseCharacter::GetThirdPersonPivotTarget()
+{
+	return GetActorTransform();
+}
+
+FVector AHuruBaseCharacter::GetFirstPersonCameraTarget()
+{
+	return GetMesh()->GetSocketLocation(NAME_FP_Camera);
+}
+
+void AHuruBaseCharacter::GetCameraParameters(float& TPFOVOut, float& FPFOVOut, bool& bRightShoulderOut) const
+{
+	TPFOVOut = ThirdPersonFOV;
+	FPFOVOut = FirstPersonFOV;
+	bRightShoulderOut = bRightShoulder;
 }
 
 void AHuruBaseCharacter::SetDesiredRotationMode(EHuruRotationMode NewRotMode)
@@ -486,28 +532,84 @@ void AHuruBaseCharacter::RagdollUpdate(float DeltaTime)
 {
 	GetMesh()->bOnlyAllowAutonomousTickPose = false;
 
-	// Set the Last Ragdoll Velocity.
+	// 마지막 랙돌 속도를 설정함
 	const FVector NewRagdollVel = GetMesh()->GetPhysicsLinearVelocity(NAME_root);
 	LastRagdollVelocity = (NewRagdollVel != FVector::ZeroVector || IsLocallyControlled())
 							  ? NewRagdollVel
 							  : LastRagdollVelocity / 2;
 
-	// Use the Ragdoll Velocity to scale the ragdoll's joint strength for physical animation.
+	// 랙돌 속도를 사용하여 물리 애니메이션을 위한 랙돌 관절 강도를 스케일링함
 	const float SpringValue = FMath::GetMappedRangeValueClamped<float, float>({0.0f, 1000.0f}, {0.0f, 25000.0f},
 																LastRagdollVelocity.Size());
 	GetMesh()->SetAllMotorsAngularDriveParams(SpringValue, 0.0f, 0.0f, false);
 
-	// Disable Gravity if falling faster than -4000 to prevent continual acceleration.
-	// This also prevents the ragdoll from going through the floor.
+	// -4000보다 빠르게 떨어지면 중력을 비활성화하여 지속적인 가속을 방지함
+	// 랙돌이 바닥을 통과하는 것을 방지함.
 	const bool bEnableGrav = LastRagdollVelocity.Z > -4000.0f;
 	GetMesh()->SetEnableGravity(bEnableGrav);
 
-	// Update the Actor location to follow the ragdoll.
+	// 랙돌을 따라가기 위해 액터 위치를 업데이트함.
 	SetActorLocationDuringRagdoll(DeltaTime);
 }
 
 void AHuruBaseCharacter::SetActorLocationDuringRagdoll(float DeltaTime)
 {
+	if (IsLocallyControlled())
+	{
+		// 골반을 타겟 위치로 설정함.
+		TargetRagdollLocation = GetMesh()->GetSocketLocation(NAME_Pelvis);
+		if (!HasAuthority())
+		{
+			Server_SetMeshLocationDuringRagdoll(TargetRagdollLocation);
+		}
+	}
+
+	// 랙돌이 위를 향하고 있는지 아래를 향하고 있는지 판단하고, 그에 따라 타겟 회전을 설정함.
+	const FRotator PelvisRot = GetMesh()->GetSocketRotation(NAME_Pelvis);
+
+	if (bReversedPelvis) {
+		bRagdollFaceUp = PelvisRot.Roll > 0.0f;
+	} else
+	{
+		bRagdollFaceUp = PelvisRot.Roll < 0.0f;
+	}
+
+
+	const FRotator TargetRagdollRotation(0.0f, bRagdollFaceUp ? PelvisRot.Yaw - 180.0f : PelvisRot.Yaw, 0.0f);
+
+	// Trace downward from the target location to offset the target location,
+	// preventing the lower half of the capsule from going through the floor when the ragdoll is laying on the ground.
+	const FVector TraceVect(TargetRagdollLocation.X, TargetRagdollLocation.Y,
+	                        TargetRagdollLocation.Z - GetCapsuleComponent()->GetScaledCapsuleHalfHeight());
+
+	UWorld* World = GetWorld();
+	check(World);
+
+	FCollisionQueryParams Params;
+	Params.AddIgnoredActor(this);
+
+	FHitResult HitResult;
+	const bool bHit = World->LineTraceSingleByChannel(HitResult, TargetRagdollLocation, TraceVect,
+	                                                  ECC_Visibility, Params);
+	
+	bRagdollOnGround = HitResult.IsValidBlockingHit();
+	FVector NewRagdollLoc = TargetRagdollLocation;
+
+	if (bRagdollOnGround)
+	{
+		const float ImpactDistZ = FMath::Abs(HitResult.ImpactPoint.Z - HitResult.TraceStart.Z);
+		NewRagdollLoc.Z += GetCapsuleComponent()->GetScaledCapsuleHalfHeight() - ImpactDistZ + 2.0f;
+	}
+	if (!IsLocallyControlled())
+	{
+		ServerRagdollPull = FMath::FInterpTo(ServerRagdollPull, 750.0f, DeltaTime, 0.6f);
+		float RagdollSpeed = FVector(LastRagdollVelocity.X, LastRagdollVelocity.Y, 0).Size();
+		FName RagdollSocketPullName = RagdollSpeed > 300 ? NAME_spine_05 : NAME_pelvis;
+		GetMesh()->AddForce(
+			(TargetRagdollLocation - GetMesh()->GetSocketLocation(RagdollSocketPullName)) * ServerRagdollPull,
+			RagdollSocketPullName, true);
+	}
+	SetActorLocationAndTargetRotation(bRagdollOnGround ? NewRagdollLoc : TargetRagdollLocation, TargetRagdollRotation);
 }
 
 void AHuruBaseCharacter::OnMovementStateChanged(EHuruMovementState PreviousState)

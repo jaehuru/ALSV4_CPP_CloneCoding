@@ -16,6 +16,61 @@ class HURU_API AHuruPlayerCameraManager : public APlayerCameraManager
 	GENERATED_BODY()
 	
 public:
+	//=====================================================================================
+	//                            PROPERTIES & VARIABLES
+	//=====================================================================================
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Huru|Camera")
+	TObjectPtr<AHuruBaseCharacter> ControlledCharacter = nullptr;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Huru|Camera")
+	TObjectPtr<USkeletalMeshComponent> CameraBehavior = nullptr;
+	
+	//=====================================================================================
+	//                                   FUNCTIONS
+	//=====================================================================================
+	AHuruPlayerCameraManager();
+	
 	UFUNCTION(BlueprintCallable, Category = "Huru|Camera")
 	void OnPossess(AHuruBaseCharacter* NewCharacter);
+
+	UFUNCTION(BlueprintCallable, Category = "Huru|Camera")
+	float GetCameraBehaviorParam(FName CurveName) const;
+
+protected:
+	//=====================================================================================
+	//                            PROPERTIES & VARIABLES
+	//=====================================================================================
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Huru|Camera")
+	FVector RootLocation;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Huru|Camera")
+	FTransform SmoothedPivotTarget;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Huru|Camera")
+	FVector PivotLocation;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Huru|Camera")
+	FVector TargetCameraLocation;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Huru|Camera")
+	FRotator TargetCameraRotation;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Huru|Camera")
+	FRotator DebugViewRotation;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Huru|Camera")
+	FVector DebugViewOffset;
+	
+	//=====================================================================================
+	//                                   FUNCTIONS
+	//=====================================================================================
+	virtual void UpdateViewTargetInternal(FTViewTarget& OutVT, float DeltaTime) override;
+
+	UFUNCTION(BlueprintCallable, Category = "Huru|Camera")
+	static FVector CalculateAxisIndependentLag(
+		FVector CurrentLocation, FVector TargetLocation, FRotator CameraRotation, FVector LagSpeeds, float DeltaTime);
+
+	UFUNCTION(BlueprintCallable, Category = "Huru|Camera")
+	bool CustomCameraBehavior(float DeltaTime, FVector& Location, FRotator& Rotation, float& FOV);
+	
 };
