@@ -115,6 +115,8 @@ public:
 		ShowOnlyInnerProperties))
 	FHuruAnimTurnInPlace TurnInPlaceValues;
 
+#pragma endregion 
+
 #pragma region Rotate In Place
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Configuration|Rotate In Place", Meta = (
@@ -164,6 +166,16 @@ public:
 	TObjectPtr<UAnimSequenceBase> TransitionAnim_L = nullptr;
 
 #pragma endregion
+
+#pragma region IK Bone Names
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Configuration|Anim Graph - Foot IK")
+	FName IkFootL_BoneName = FName(TEXT("ik_foot_l"));
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Configuration|Anim Graph - Foot IK")
+	FName IkFootR_BoneName = FName(TEXT("ik_foot_r"));
+	
+#pragma endregion 
 	
 	//=====================================================================================
 	//                                   FUNCTIONS

@@ -3,7 +3,10 @@
 //Huru
 #include "Character/Animation/Notify/HuruCharacterAnimInstance.h"
 #include "Character/HuruBaseCharacter.h"
+#include "Library/HuruMathLibrary.h"
 //Engine
+#include "Components/CapsuleComponent.h"
+#include "Curves/CurveVector.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
 static const FName NAME_BasePose_CLF(TEXT("BasePose_CLF"));
@@ -27,6 +30,8 @@ static const FName NAME_Layering_Spine_Add(TEXT("Layering_Spine_Add"));
 static const FName NAME_Mask_AimOffset(TEXT("Mask_AimOffset"));
 static const FName NAME_Mask_LandPrediction(TEXT("Mask_LandPrediction"));
 static const FName NAME__ALSCharacterAnimInstance__RotationAmount(TEXT("RotationAmount"));
+static const FName NAME_VB___foot_target_l(TEXT("VB foot_target_l"));
+static const FName NAME_VB___foot_target_r(TEXT("VB foot_target_r"));
 static const FName NAME_W_Gait(TEXT("W_Gait"));
 static const FName NAME__ALSCharacterAnimInstance__root(TEXT("root"));
 
@@ -132,9 +137,15 @@ void UHuruCharacterAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 
 void UHuruCharacterAnimInstance::PlayTransition(const FHuruDynamicMontageParams& Parameters)
 {
-	PlaySlotAnimationAsDynamicMontage(Parameters.Animation, NAME_Grounded___Slot,
-									  Parameters.BlendInTime, Parameters.BlendOutTime, Parameters.PlayRate, 1,
-									  0.0f, Parameters.StartTime);
+	PlaySlotAnimationAsDynamicMontage(
+		Parameters.Animation,
+		NAME_Grounded___Slot,
+		Parameters.BlendInTime,
+		Parameters.BlendOutTime,
+		Parameters.PlayRate,
+		1,
+		0.0f,
+		Parameters.StartTime);
 }
 
 void UHuruCharacterAnimInstance::PlayTransitionChecked(const FHuruDynamicMontageParams& Parameters)
@@ -156,18 +167,37 @@ void UHuruCharacterAnimInstance::PlayDynamicTransition(float ReTriggerDelay, FHu
 
 		UWorld* World = GetWorld();
 		check(World);
-		World->GetTimerManager().SetTimer(PlayDynamicTransitionTimer, this,
-										  &UHuruCharacterAnimInstance::PlayDynamicTransitionDelay,
-										  ReTriggerDelay, false);
+		World->GetTimerManager().SetTimer(
+			PlayDynamicTransitionTimer,
+			this,
+			&UHuruCharacterAnimInstance::PlayDynamicTransitionDelay,
+			ReTriggerDelay, false);
 	}
 }
 
 void UHuruCharacterAnimInstance::OnJumped()
 {
+	InAir.bJumped = true;
+	InAir.JumpPlayRate = FMath::GetMappedRangeValueClamped<float, float>(
+		{0.0f, 600.0f}, {1.2f, 1.5f}, CharacterInformation.Speed);
+
+	GetWorld()->GetTimerManager().SetTimer(
+		OnJumpedTimer,
+		this,
+		&UHuruCharacterAnimInstance::OnJumpedDelay,
+		0.1f,
+		false);
 }
 
 void UHuruCharacterAnimInstance::OnPivot()
 {
+	Grounded.bPivot = CharacterInformation.Speed < Config.TriggerPivotSpeedLimit;
+	GetWorld()->GetTimerManager().SetTimer(
+		OnPivotTimer,
+		this,
+		&UHuruCharacterAnimInstance::OnPivotDelay,
+		0.1f,
+		false);
 }
 
 bool UHuruCharacterAnimInstance::ShouldMoveCheck() const
@@ -322,72 +352,351 @@ void UHuruCharacterAnimInstance::UpdateMovementValues(float DeltaSeconds)
 
 void UHuruCharacterAnimInstance::UpdateRotationValues()
 {
+	// 이동 방향을 설정함.
+	MovementDirection = CalculateMovementDirection();
+
+	// Yaw 오프셋을 설정함. 이 값들은 AnimGraph의 "YawOffset" 커브에 영향을 주며,
+	// 캐릭터의 회전 방향을 더 자연스럽게 보이도록 오프셋을 적용하는 데 사용됨. 
+	// 커브를 통해 각 이동 방향에서 오프셋이 어떻게 작동할지 세밀하게 조절할 수 있음.
+	FRotator Delta = CharacterInformation.Velocity.ToOrientationRotator() - CharacterInformation.AimingRotation;
+	Delta.Normalize();
+	const FVector& FBOffset = YawOffset_FB->GetVectorValue(Delta.Yaw);
+	Grounded.FYaw = FBOffset.X;
+	Grounded.BYaw = FBOffset.Y;
+	const FVector& LROffset = YawOffset_LR->GetVectorValue(Delta.Yaw);
+	Grounded.LYaw = LROffset.X;
+	Grounded.RYaw = LROffset.Y;
 }
 
 void UHuruCharacterAnimInstance::UpdateInAirValues(float DeltaSeconds)
 {
+	// 낙하 속도를 업데이트함. 공중에 있을 때만 이 값을 설정하면 착지 강도를 AnimGraph에서 사용할 수 있음.
+	// 그렇지 않으면, 착지 시 Z 속도가 0으로 돌아감.
+	InAir.FallSpeed = CharacterInformation.Velocity.Z;
+
+	// 착지 예측 가중치를 설정함.
+	InAir.LandPrediction = CalculateLandPrediction();
+
+	// 공중에서의 기울기(Lean) 값을 보간(Interp)하고 설정함.
+	const FHuruLeanAmount& InAirLeanAmount = CalculateAirLeanAmount();
+	LeanAmount.LR = FMath::FInterpTo(LeanAmount.LR, InAirLeanAmount.LR, DeltaSeconds, Config.GroundedLeanInterpSpeed);
+	LeanAmount.FB = FMath::FInterpTo(LeanAmount.FB, InAirLeanAmount.FB, DeltaSeconds, Config.GroundedLeanInterpSpeed);
 }
 
 void UHuruCharacterAnimInstance::UpdateRagdollValues()
 {
+	// 속도 길이에 따라 난동(Flail) 속도를 조정함. 랙돌이 빠르게 움직일수록 캐릭터가 더 빠르게 난동을 부림.
+	const float VelocityLength = GetOwningComponent()->GetPhysicsLinearVelocity(NAME__ALSCharacterAnimInstance__root).Size();
+	FlailRate = FMath::GetMappedRangeValueClamped<float, float>({0.0f, 1000.0f}, {0.0f, 1.0f}, VelocityLength);
 }
 
 void UHuruCharacterAnimInstance::RotateInPlaceCheck()
 {
+	// Step 1: 에이밍 각도가 임계값을 초과하는지 확인하여 캐릭터가 왼쪽 또는 오른쪽으로 회전해야 하는지 확인함.
+	Grounded.bRotateL = AimingValues.AimingAngle.X < RotateInPlace.RotateMinThreshold;
+	Grounded.bRotateR = AimingValues.AimingAngle.X > RotateInPlace.RotateMaxThreshold;
+
+	// Step 2: 캐릭터가 회전해야 하는 경우, 회전 속도를 Aim Yaw Rate에 맞춰 설정함.
+	// 이렇게 하면 카메라를 더 빨리 움직일 때 캐릭터가 더 빠르게 회전하게 됨.
+	if (Grounded.bRotateL || Grounded.bRotateR)
+	{
+		Grounded.RotateRate = FMath::GetMappedRangeValueClamped<float, float>(
+			{RotateInPlace.AimYawRateMinRange, RotateInPlace.AimYawRateMaxRange},
+			{RotateInPlace.MinPlayRate, RotateInPlace.MaxPlayRate},
+			CharacterInformation.AimYawRate);
+	}
 }
 
 void UHuruCharacterAnimInstance::TurnInPlaceCheck(float DeltaSeconds)
 {
+	// Step 1: 에이밍 각도가 Turn Check 최소 각도 밖에 있고, Aim Yaw Rate가 Aim Yaw Rate Limit보다 낮은지 확인함.
+	// 그렇다면, Elapsed Delay Time을 카운트 시작함. 그렇지 않으면, Elapsed Delay Time을 초기화함.
+	// 이렇게 하면, 제자리에 돌기 전에 일정 시간 동안 조건이 유지되도록 보장함.
+	if (FMath::Abs(AimingValues.AimingAngle.X) <= TurnInPlaceValues.TurnCheckMinAngle ||
+		CharacterInformation.AimYawRate >= TurnInPlaceValues.AimYawRateLimit)
+	{
+		TurnInPlaceValues.ElapsedDelayTime = 0.0f;
+		return;
+	}
+
+	TurnInPlaceValues.ElapsedDelayTime += DeltaSeconds;
+	const float ClampedAimAngle = FMath::GetMappedRangeValueClamped<float,float>
+	({TurnInPlaceValues.TurnCheckMinAngle, 180.0f},
+		{TurnInPlaceValues.MinAngleDelay,TurnInPlaceValues.MaxAngleDelay},
+		AimingValues.AimingAngle.X);
+
+	// Step 2: Elapsed Delay 시간이 설정된 지연 시간을 초과하는지 확인 (회전 각도 범위에 매핑됨). 
+	// 그렇다면, 제자리 회전을 트리거함.
+	if (TurnInPlaceValues.ElapsedDelayTime > ClampedAimAngle)
+	{
+		FRotator TurnInPlaceYawRot = CharacterInformation.AimingRotation;
+		TurnInPlaceYawRot.Roll = 0.0f;
+		TurnInPlaceYawRot.Pitch = 0.0f;
+		TurnInPlace(TurnInPlaceYawRot, 1.0f, 0.0f, false);
+	}
 }
 
 void UHuruCharacterAnimInstance::DynamicTransitionCheck()
 {
+	// 각 발을 확인하여 IK_Foot 본과 원하는/목표 위치 (가상 본을 통해 결정됨) 사이의 위치 차이가 임계값을 초과하는지 확인.
+	// 초과할 경우, 해당 발에 애드티브 전환 애니메이션을 재생함.
+	// 현재 설정된 전환은 두 발 전환 애니메이션의 후반부를 재생하므로 단일 발만 움직임.
+	// IK_Foot 본만 잠길 수 있기 때문에 별도의 가상 본을 통해 잠길 때 시스템이 원하는 위치를 알 수 있도록 함.
+	FTransform SocketTransformA = GetOwningComponent()->GetSocketTransform(IkFootL_BoneName, RTS_Component);
+	FTransform SocketTransformB = GetOwningComponent()->GetSocketTransform(
+		NAME_VB___foot_target_l, RTS_Component);
+	float Distance = (SocketTransformB.GetLocation() - SocketTransformA.GetLocation()).Size();
+	if (Distance > Config.DynamicTransitionThreshold)
+	{
+		FHuruDynamicMontageParams Params;
+		Params.Animation = TransitionAnim_R;
+		Params.BlendInTime = 0.2f;
+		Params.BlendOutTime = 0.2f;
+		Params.PlayRate = 1.5f;
+		Params.StartTime = 0.8f;
+		PlayDynamicTransition(0.1f, Params);
+	}
+
+	SocketTransformA = GetOwningComponent()->GetSocketTransform(IkFootR_BoneName, RTS_Component);
+	SocketTransformB = GetOwningComponent()->GetSocketTransform(NAME_VB___foot_target_r, RTS_Component);
+	Distance = (SocketTransformB.GetLocation() - SocketTransformA.GetLocation()).Size();
+	if (Distance > Config.DynamicTransitionThreshold)
+	{
+		FHuruDynamicMontageParams Params;
+		Params.Animation = TransitionAnim_L;
+		Params.BlendInTime = 0.2f;
+		Params.BlendOutTime = 0.2f;
+		Params.PlayRate = 1.5f;
+		Params.StartTime = 0.8f;
+		PlayDynamicTransition(0.1f, Params);
+	}
 }
 
 FHuruVelocityBlend UHuruCharacterAnimInstance::CalculateVelocityBlend() const
 {
+	// 속도 블렌드를 계산함. 이 값은 각 방향에서 액터의 속도 양을 나타내며 (대각선이 각 방향에서 0.5가 되도록 정규화됨),
+	// 표준 블렌드 스페이스보다 더 나은 방향 블렌딩을 생성하기 위해 BlendMulti 노드에서 사용됨.
+	const FVector LocRelativeVelocityDir =
+		CharacterInformation.CharacterActorRotation.UnrotateVector(CharacterInformation.Velocity.GetSafeNormal(0.1f));
+	const float Sum = FMath::Abs(LocRelativeVelocityDir.X) + FMath::Abs(LocRelativeVelocityDir.Y) +
+		FMath::Abs(LocRelativeVelocityDir.Z);
+	const FVector RelativeDir = LocRelativeVelocityDir / Sum;
+	FHuruVelocityBlend Result;
+	Result.F = FMath::Clamp(RelativeDir.X, 0.0f, 1.0f);
+	Result.B = FMath::Abs(FMath::Clamp(RelativeDir.X, -1.0f, 0.0f));
+	Result.L = FMath::Abs(FMath::Clamp(RelativeDir.Y, -1.0f, 0.0f));
+	Result.R = FMath::Clamp(RelativeDir.Y, 0.0f, 1.0f);
+	return Result;
 }
 
 void UHuruCharacterAnimInstance::TurnInPlace(FRotator TargetRotation, float PlayRateScale, float StartTime, bool OverrideCurrent)
 {
+	// Step 1: Set Turn Angle
+	FRotator Delta = TargetRotation - CharacterInformation.CharacterActorRotation;
+	Delta.Normalize();
+	const float TurnAngle = Delta.Yaw;
+
+	// Step 2: Choose Turn Asset based on the Turn Angle and Stance
+	FHuruTurnInPlaceAsset TargetTurnAsset;
+	if (Stance.Standing())
+	{
+		if (FMath::Abs(TurnAngle) < TurnInPlaceValues.Turn180Threshold)
+		{
+			TargetTurnAsset = TurnAngle < 0.0f
+								  ? TurnInPlaceValues.N_TurnIP_L90
+								  : TurnInPlaceValues.N_TurnIP_R90;
+		}
+		else
+		{
+			TargetTurnAsset = TurnAngle < 0.0f
+								  ? TurnInPlaceValues.N_TurnIP_L180
+								  : TurnInPlaceValues.N_TurnIP_R180;
+		}
+	}
+	else
+	{
+		if (FMath::Abs(TurnAngle) < TurnInPlaceValues.Turn180Threshold)
+		{
+			TargetTurnAsset = TurnAngle < 0.0f
+								  ? TurnInPlaceValues.CLF_TurnIP_L90
+								  : TurnInPlaceValues.CLF_TurnIP_R90;
+		}
+		else
+		{
+			TargetTurnAsset = TurnAngle < 0.0f
+								  ? TurnInPlaceValues.CLF_TurnIP_L180
+								  : TurnInPlaceValues.CLF_TurnIP_R180;
+		}
+	}
+
+	// Step 3: If the Target Turn Animation is not playing or set to be overriden, play the turn animation as a dynamic montage.
+	if (!OverrideCurrent && IsPlayingSlotAnimation(TargetTurnAsset.Animation, TargetTurnAsset.SlotName))
+	{
+		return;
+	}
+	PlaySlotAnimationAsDynamicMontage(TargetTurnAsset.Animation, TargetTurnAsset.SlotName, 0.2f, 0.2f,
+									  TargetTurnAsset.PlayRate * PlayRateScale, 1, 0.0f, StartTime);
+
+	// Step 4: Scale the rotation amount (gets scaled in AnimGraph) to compensate for turn angle (If Allowed) and play rate.
+	if (TargetTurnAsset.ScaleTurnAngle)
+	{
+		Grounded.RotationScale = (TurnAngle / TargetTurnAsset.AnimatedAngle) * TargetTurnAsset.PlayRate * PlayRateScale;
+	}
+	else
+	{
+		Grounded.RotationScale = TargetTurnAsset.PlayRate * PlayRateScale;
+	}
 }
 
 FVector UHuruCharacterAnimInstance::CalculateRelativeAccelerationAmount() const
 {
+	// 상대 가속도 양을 계산함. 이 값은 액터 회전에 대한 현재 가속도/감속도의 양을 나타냄.
+	// -1은 최대 제동 감속도를 의미하고, 1은 캐릭터 이동 컴포넌트의 최대 가속도를 의미하도록 -1에서 1의 범위로 정규화됨.
+	if (FVector::DotProduct(CharacterInformation.Acceleration, CharacterInformation.Velocity) > 0.0f)
+	{
+		const float MaxAcc = Character->GetCharacterMovement()->GetMaxAcceleration();
+		return CharacterInformation.CharacterActorRotation.UnrotateVector(
+			CharacterInformation.Acceleration.GetClampedToMaxSize(MaxAcc) / MaxAcc);
+	}
+
+	const float MaxBrakingDec = Character->GetCharacterMovement()->GetMaxBrakingDeceleration();
+	return
+		CharacterInformation.CharacterActorRotation.UnrotateVector(
+			CharacterInformation.Acceleration.GetClampedToMaxSize(MaxBrakingDec) / MaxBrakingDec);
 }
 
 float UHuruCharacterAnimInstance::CalculateStrideBlend() const
 {
+	// Calculate the Stride Blend. This value is used within the blendspaces to scale the stride (distance feet travel)
+	// so that the character can walk or run at different movement speeds.
+	// It also allows the walk or run gait animations to blend independently while still matching the animation speed to
+	// the movement speed, preventing the character from needing to play a half walk+half run blend.
+	// The curves are used to map the stride amount to the speed for maximum control.
+	const float CurveTime = CharacterInformation.Speed / GetOwningComponent()->GetComponentScale().Z;
+	const float ClampedGait = GetAnimCurveClamped(NAME_W_Gait, -1.0, 0.0f, 1.0f);
+	const float LerpedStrideBlend =
+		FMath::Lerp(StrideBlend_N_Walk->GetFloatValue(CurveTime), StrideBlend_N_Run->GetFloatValue(CurveTime),
+					ClampedGait);
+	return FMath::Lerp(LerpedStrideBlend, StrideBlend_C_Walk->GetFloatValue(CharacterInformation.Speed),
+					   GetCurveValue(NAME_BasePose_CLF));
 }
 
 float UHuruCharacterAnimInstance::CalculateWalkRunBlend() const
 {
+	// 걷기와 달리기 혼합을 계산함. 이 값은 블렌드 스페이스 내에서 걷기와 달리기 간의 혼합을 위해 사용됨.
+	return Gait.Walking() ? 0.0f : 1.0;
 }
 
 float UHuruCharacterAnimInstance::CalculateStandingPlayRate() const
 {
+	// 캐릭터의 속도를 각 보행 속도에 대한 애니메이션 속도로 나누어 재생 비율을 계산함.
+	// 보행 속도는 모든 이동 사이클에 존재하는 "W_Gait" 애니메이션 커브에 의해 결정되어, 현재 혼합된 애니메이션과 항상 동기화됨.
+	// 또한 이 값은 보폭 블렌드와 메쉬 스케일로 나뉘어 재생 비율이 보폭이나 스케일이 작아질수록 증가하도록 함.
+	const float LerpedSpeed = FMath::Lerp(CharacterInformation.Speed / Config.AnimatedWalkSpeed,
+										  CharacterInformation.Speed / Config.AnimatedRunSpeed,
+										  GetAnimCurveClamped(NAME_W_Gait, -1.0f, 0.0f, 1.0f));
+
+	const float SprintAffectedSpeed = FMath::Lerp(LerpedSpeed, CharacterInformation.Speed / Config.AnimatedSprintSpeed,
+												  GetAnimCurveClamped(NAME_W_Gait, -2.0f, 0.0f, 1.0f));
+
+	return FMath::Clamp((SprintAffectedSpeed / Grounded.StrideBlend) / GetOwningComponent()->GetComponentScale().Z,
+						0.0f, 3.0f);
 }
 
 float UHuruCharacterAnimInstance::CalculateDiagonalScaleAmount() const
 {
+	// 대각선 스케일 양을 계산함. 이 값은 발 IK 루트 본을 스케일링하여 발 IK 본이 대각선 블렌드에서 더 많은 거리를 커버하도록 함.
+	// 스케일링 없이, 발은 IK 본의 선형 변환 블렌딩으로 인해 대각선 방향으로 충분히 움직이지 않음.
+	// 이 커브는 값을 쉽게 매핑하는 데 사용됨.
+	return DiagonalScaleAmountCurve->GetFloatValue(FMath::Abs(VelocityBlend.F + VelocityBlend.B));
 }
 
 float UHuruCharacterAnimInstance::CalculateCrouchingPlayRate() const
 {
+	// 앉은 플레이 속도를 계산함. 캐릭터의 속도를 애니메이션 속도로 나누어 계산함.
+	// 이 값은 움직이는 동안 앉음에서 서 있음으로의 블렌드를 개선하기 위해 서 있는 플레이 속도와 분리되어야 함.
+	return FMath::Clamp(
+		CharacterInformation.Speed / Config.AnimatedCrouchSpeed / Grounded.StrideBlend / GetOwningComponent()->
+		GetComponentScale().Z,
+		0.0f, 2.0f);
 }
 
 float UHuruCharacterAnimInstance::CalculateLandPrediction() const
 {
+	// 착지 예측 가중치를 계산함. 속도 방향으로 추적하여 캐릭터가 떨어지고 있는 걷기 가능한 표면을 찾아서
+	// 충돌까지 걸리는 '시간' (0-1 범위, 1은 최대, 0은 착지 직전)을 가져옴.
+	// 착지 예측 곡선을 사용하여 시간이 최종 가중치에 미치는 영향을 조절하여 부드러운 블렌드를 구현함.
+	if (InAir.FallSpeed >= -200.0f)
+	{
+		return 0.0f;
+	}
+
+	const UCapsuleComponent* CapsuleComp = Character->GetCapsuleComponent();
+	const FVector& CapsuleWorldLoc = CapsuleComp->GetComponentLocation();
+	const float VelocityZ = CharacterInformation.Velocity.Z;
+	FVector VelocityClamped = CharacterInformation.Velocity;
+	VelocityClamped.Z = FMath::Clamp(VelocityZ, -4000.0f, -200.0f);
+	VelocityClamped.Normalize();
+
+	const FVector TraceLength = VelocityClamped * FMath::GetMappedRangeValueClamped<float, float>(
+		{0.0f, -4000.0f}, {50.0f, 2000.0f}, VelocityZ);
+
+	UWorld* World = GetWorld();
+	check(World);
+
+	FCollisionQueryParams Params;
+	Params.AddIgnoredActor(Character);
+
+	FHitResult HitResult;
+	const FCollisionShape CapsuleCollisionShape = FCollisionShape::MakeCapsule(CapsuleComp->GetUnscaledCapsuleRadius(), CapsuleComp->GetUnscaledCapsuleHalfHeight());
+	const bool bHit = World->SweepSingleByChannel(
+		HitResult,
+		CapsuleWorldLoc,
+		CapsuleWorldLoc + TraceLength,
+		FQuat::Identity,
+	ECC_Visibility, CapsuleCollisionShape, Params);
+
+	if (Character->GetCharacterMovement()->IsWalkable(HitResult))
+	{
+		return FMath::Lerp(
+			LandPredictionCurve->GetFloatValue(HitResult.Time),
+			0.0f,
+			GetCurveValue(NAME_Mask_LandPrediction));
+	}
+
+	return 0.0f;
 }
 
 FHuruLeanAmount UHuruCharacterAnimInstance::CalculateAirLeanAmount() const
 {
+	// 상대 속도 방향과 양을 사용하여 공중에서 캐릭터가 얼마나 기울어야 하는지 결정함.
+	// 공중에서의 기울기 곡선은 낙하 속도를 가져오며, 이를 곱셈기로 사용하여
+	// 위로 이동하다가 아래로 이동할 때 기울기 방향을 부드럽게 반전시킴.
+	FHuruLeanAmount CalcLeanAmount;
+	const FVector& UnrotatedVel = CharacterInformation.CharacterActorRotation.UnrotateVector(
+		CharacterInformation.Velocity) / 350.0f;
+	FVector2D InversedVect(UnrotatedVel.Y, UnrotatedVel.X);
+	InversedVect *= LeanInAirCurve->GetFloatValue(InAir.FallSpeed);
+	CalcLeanAmount.LR = InversedVect.X;
+	CalcLeanAmount.FB = InversedVect.Y;
+	return CalcLeanAmount;
 }
 
 EHuruMovementDirection UHuruCharacterAnimInstance::CalculateMovementDirection() const
 {
+	// 이동 방향을 계산함. 이 값은 캐릭터가 카메라를 기준으로 이동하는 방향을 나타내며 시선 방향 / 조준 회전 모드 동안 사용됨.
+	// 적절한 방향 상태로 블렌딩하기 위해 Cycle Blending 애니메이션 레이어에서 사용됨.
+	if (Gait.Sprinting() || RotationMode.VelocityDirection())
+	{
+		return EHuruMovementDirection::Forward;
+	}
+
+	FRotator Delta = CharacterInformation.Velocity.ToOrientationRotator() - CharacterInformation.AimingRotation;
+	Delta.Normalize();
+	return UHuruMathLibrary::CalculateQuadrant(MovementDirection, 70.0f, -70.0f, 110.0f, -110.0f, 5.0f, Delta.Yaw);
 }
 
 float UHuruCharacterAnimInstance::GetAnimCurveClamped(const FName& Name, float Bias, float ClampMin, float ClampMax) const
 {
+	return FMath::Clamp(GetCurveValue(Name) + Bias, ClampMin, ClampMax);
 }
