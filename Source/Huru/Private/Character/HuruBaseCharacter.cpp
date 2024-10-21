@@ -471,6 +471,16 @@ void AHuruBaseCharacter::Replicated_PlayMontage_Implementation(UAnimMontage* Mon
 	Server_PlayMontage(Montage, PlayRate);
 }
 
+float AHuruBaseCharacter::GetAnimCurveValue(FName CurveName) const
+{
+	if (GetMesh()->GetAnimInstance())
+	{
+		return GetMesh()->GetAnimInstance()->GetCurveValue(CurveName);
+	}
+
+	return 0.0f;
+}
+
 void AHuruBaseCharacter::SetRightShoulder(bool bNewRightShoulder)
 {
 	bRightShoulder = bNewRightShoulder;
@@ -577,8 +587,8 @@ void AHuruBaseCharacter::SetActorLocationDuringRagdoll(float DeltaTime)
 
 	const FRotator TargetRagdollRotation(0.0f, bRagdollFaceUp ? PelvisRot.Yaw - 180.0f : PelvisRot.Yaw, 0.0f);
 
-	// Trace downward from the target location to offset the target location,
-	// preventing the lower half of the capsule from going through the floor when the ragdoll is laying on the ground.
+	// 목표 위치에서 아래쪽으로 트레이스를 수행하여 목표 위치를 오프셋함.
+	// 이는 캐릭터의 하단이 바닥을 통과하지 않도록 하여, 래그돌이 바닥에 누워 있을 때를 방지함.
 	const FVector TraceVect(TargetRagdollLocation.X, TargetRagdollLocation.Y,
 	                        TargetRagdollLocation.Z - GetCapsuleComponent()->GetScaledCapsuleHalfHeight());
 
@@ -792,10 +802,131 @@ void AHuruBaseCharacter::UpdateCharacterMovement()
 
 void AHuruBaseCharacter::UpdateGroundedRotation(float DeltaTime)
 {
+	if (MovementAction == EHuruMovementAction::None)
+	{
+		const bool bCanUpdateMovingRot = ((bIsMoving && bHasMovementInput) || Speed > 150.0f) && !HasAnyRootMotion();
+		if (bCanUpdateMovingRot)
+		{
+			const float GroundedRotationRate = CalculateGroundedRotationRate();
+			if (RotationMode == EHuruRotationMode::VelocityDirection)
+			{
+				// 속도 방향 회전
+				SmoothCharacterRotation({0.0f, LastVelocityRotation.Yaw, 0.0f}, 800.0f, GroundedRotationRate, DeltaTime);
+			}
+			else if (RotationMode == EHuruRotationMode::LookingDirection)
+			{
+				// 바라보는 방향 회전
+				float YawValue;
+				if (Gait == EHuruGait::Sprinting)
+				{
+					YawValue = LastVelocityRotation.Yaw;
+				}
+				else
+				{
+					// 걷거나 뛰거나
+					const float YawOffsetCurveVal = GetAnimCurveValue(NAME_YawOffset);
+					YawValue = AimingRotation.Yaw + YawOffsetCurveVal;
+				}
+				SmoothCharacterRotation({0.0f, YawValue, 0.0f}, 500.0f, GroundedRotationRate, DeltaTime);
+			}
+			else if (RotationMode == EHuruRotationMode::Aiming)
+			{
+				const float ControlYaw = AimingRotation.Yaw;
+				SmoothCharacterRotation({0.0f, ControlYaw, 0.0f}, 1000.0f, 20.0f, DeltaTime);
+			}
+		}
+		else
+		{
+			// 움직이지 않을 때
+
+			if ((ViewMode == EHuruViewMode::ThirdPerson && RotationMode == EHuruRotationMode::Aiming) ||
+				ViewMode == EHuruViewMode::FirstPerson)
+			{
+				LimitRotation(-100.0f, 100.0f, 20.0f, DeltaTime);
+			}
+
+			// Turn In Place 애니메이션에서 RotationAmount 커브를 적용함.
+			// RotationAmount 커브는 매 프레임마다 적용될 회전량을 정의하며,
+			// 30fps로 애니메이션된 애니메이션에 대해 계산됨.
+
+			const float RotAmountCurve = GetAnimCurveValue(NAME_RotationAmount);
+
+			if (FMath::Abs(RotAmountCurve) > 0.001f)
+			{
+				if (GetLocalRole() == ROLE_AutonomousProxy)
+				{
+					TargetRotation.Yaw = UKismetMathLibrary::NormalizeAxis(
+						TargetRotation.Yaw + (RotAmountCurve * (DeltaTime / (1.0f / 30.0f))));
+					SetActorRotation(TargetRotation);
+				}
+				else
+				{
+					AddActorWorldRotation({0, RotAmountCurve * (DeltaTime / (1.0f / 30.0f)), 0});
+				}
+				TargetRotation = GetActorRotation();
+			}
+		}
+	}
+	else if (MovementAction == EHuruMovementAction::Rolling)
+	{
+		// Rolling 회전 (네트워크 게임에서는 허용되지 않음)
+		if (!bEnableNetworkOptimizations && bHasMovementInput)
+		{
+			SmoothCharacterRotation({0.0f, LastMovementInputRotation.Yaw, 0.0f}, 0.0f, 2.0f, DeltaTime);
+		}
+	}
+
+	// 다른 동작들은 무시됨
 }
 
 void AHuruBaseCharacter::UpdateInAirRotation(float DeltaTime)
 {
+	if (RotationMode == EHuruRotationMode::VelocityDirection || RotationMode == EHuruRotationMode::LookingDirection)
+	{
+		// 속도 / 바라보는 방향 회전
+		SmoothCharacterRotation({0.0f, InAirRotation.Yaw, 0.0f}, 0.0f, 5.0f, DeltaTime);
+	}
+	else if (RotationMode == EHuruRotationMode::Aiming)
+	{
+		// 조준 회전
+		SmoothCharacterRotation({0.0f, AimingRotation.Yaw, 0.0f}, 0.0f, 15.0f, DeltaTime);
+		InAirRotation = GetActorRotation();
+	}
+}
+
+void AHuruBaseCharacter::SmoothCharacterRotation(FRotator Target, float TargetInterpSpeed, float ActorInterpSpeed, float DeltaTime)
+{
+	// 부드러운 회전 동작을 위해 목표 회전을 보간한다.
+	TargetRotation = FMath::RInterpConstantTo(TargetRotation, Target, DeltaTime, TargetInterpSpeed);
+	SetActorRotation( FMath::RInterpTo(GetActorRotation(), TargetRotation, DeltaTime, ActorInterpSpeed));
+}
+
+float AHuruBaseCharacter::CalculateGroundedRotationRate() const
+{
+	// 현재 회전 속도 곡선을 사용하여 회전 속도를 계산한다.
+	// 곡선을 매핑된 속도와 함께 사용하면 각 속도에 대한 회전 속도를 높이기 위한 높은 제어 수준을 제공한다.
+	// 카메라가 빠르게 회전할 경우 속도를 증가시켜 더 반응성이 뛰어난 회전을 만든다.
+
+	const float MappedSpeedVal = MyCharacterMovementComponent->GetMappedSpeed();
+	const float CurveVal =
+		MyCharacterMovementComponent->CurrentMovementSettings.RotationRateCurve->GetFloatValue(MappedSpeedVal);
+	const float ClampedAimYawRate = FMath::GetMappedRangeValueClamped<float, float>({0.0f, 300.0f}, {1.0f, 3.0f}, AimYawRate);
+	return CurveVal * ClampedAimYawRate;
+}
+
+void AHuruBaseCharacter::LimitRotation(float AimYawMin, float AimYawMax, float InterpSpeed, float DeltaTime)
+{
+	// 캐릭터가 특정 각도를 넘어 회전하지 않도록 방지한다.
+	FRotator Delta = AimingRotation - GetActorRotation();
+	Delta.Normalize();
+	const float RangeVal = Delta.Yaw;
+
+	if (RangeVal < AimYawMin || RangeVal > AimYawMax)
+	{
+		const float ControlRotYaw = AimingRotation.Yaw;
+		const float TargetYaw = ControlRotYaw + (RangeVal > 0.0f ? AimYawMin : AimYawMax);
+		SmoothCharacterRotation({0.0f, TargetYaw, 0.0f}, 0.0f, InterpSpeed, DeltaTime);
+	}
 }
 
 void AHuruBaseCharacter::SetMovementModel()

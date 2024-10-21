@@ -47,6 +47,7 @@ protected:
 	void SetupCamera();
 	
 #pragma region Default_Actions
+	
 	UFUNCTION()
 	void ForwardMovementAction(const FInputActionValue& Value);
 
@@ -88,6 +89,7 @@ protected:
 
 	UFUNCTION()
 	void LookingDirectionAction(const FInputActionValue& Value);
+	
 #pragma endregion
 	
 	

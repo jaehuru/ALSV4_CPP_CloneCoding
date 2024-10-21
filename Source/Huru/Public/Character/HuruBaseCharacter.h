@@ -69,6 +69,7 @@ public:
 #pragma endregion 
 	
 #pragma region Character States
+	
 	UFUNCTION(BlueprintCallable, Category = "Huru|Character States")
 	void SetMovementState(EHuruMovementState NewState, bool bForce = false);
 
@@ -148,6 +149,12 @@ public:
 
 	UFUNCTION(BlueprintGetter, Category = "Huru|Character States")
 	EHuruGroundedEntryState GetGroundedEntryState() const { return GroundedEntryState; }
+
+	UFUNCTION(BlueprintSetter, Category = "Huru|Chracter States")
+	void SetDesiredRotationMode(EHuruRotationMode NewRotMode);
+	
+	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Huru|Chracter States")
+	void Server_SetDesiredRotationMode(EHuruRotationMode NewRotMode);
 	
 #pragma endregion
 
@@ -178,6 +185,13 @@ public:
 	bool HasMovementInput() const { return bHasMovementInput; }
 	
 #pragma endregion
+
+#pragma region
+
+	UFUNCTION(BlueprintCallable, Category = "Huru|Utility")
+	float GetAnimCurveValue(FName CurveName) const;
+	
+#pragma endregion 
 
 #pragma region Camera System
 	
@@ -271,12 +285,7 @@ public:
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Huru|Input")
 	void LookingDirectionAction();
-
-	UFUNCTION(BlueprintSetter, Category = "Huru|Input")
-	void SetDesiredRotationMode(EHuruRotationMode NewRotMode);
 	
-	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Huru|Character States")
-	void Server_SetDesiredRotationMode(EHuruRotationMode NewRotMode);
 #pragma endregion
 	//=====================================================================================
 	//                            FORCEINLINE FUNCTIONS
@@ -485,7 +494,8 @@ protected:
 	/** 네트워크 게임에서는 곡선 기반 이동같은 다른 기능을 사용하지 않을 것 */
 	bool bEnableNetworkOptimizations = false;
 	
-#pragma endregion 
+#pragma endregion
+	
 	//=====================================================================================
 	//                                   FUNCTIONS
 	//=====================================================================================
@@ -522,9 +532,17 @@ protected:
 #pragma endregion
 
 #pragma region Utils
+	
+	void SmoothCharacterRotation(FRotator Target, float TargetInterpSpeed, float ActorInterpSpeed, float DeltaTime);
+
+	float CalculateGroundedRotationRate() const;
+
+	void LimitRotation(float AimYawMin, float AimYawMax, float InterpSpeed, float DeltaTime);
+	
 	void SetMovementModel();
 
 	void ForceUpdateCharacterState();
+	
 #pragma endregion 
 
 #pragma region Replication 
