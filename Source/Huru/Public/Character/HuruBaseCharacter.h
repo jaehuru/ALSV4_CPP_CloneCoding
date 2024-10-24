@@ -541,6 +541,8 @@ protected:
 #pragma endregion 
 	
 #pragma region State Changes
+
+	virtual void OnMovementModeChanged(EMovementMode PrevMovementMode, uint8 PreviousCustomMode = 0) override;
 	
 	virtual void OnMovementStateChanged(EHuruMovementState PreviousState);
 

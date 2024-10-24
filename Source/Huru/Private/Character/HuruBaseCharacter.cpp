@@ -673,6 +673,24 @@ void AHuruBaseCharacter::SetActorLocationDuringRagdoll(float DeltaTime)
 	SetActorLocationAndTargetRotation(bRagdollOnGround ? NewRagdollLoc : TargetRagdollLocation, TargetRagdollRotation);
 }
 
+void AHuruBaseCharacter::OnMovementModeChanged(EMovementMode PrevMovementMode, uint8 PreviousCustomMode)
+{
+	Super::OnMovementModeChanged(PrevMovementMode, PreviousCustomMode);
+
+	// 캐릭터 이동 모드 변화를 사용해 이동 상태를 올바른 값으로 설정함
+	// 이는 사용자 정의 이동 상태를 가질 수 있게 하면서도 기본 캐릭터 이동 컴포넌트의 기능을 계속 사용할 수 있게 해줌
+
+	if (GetCharacterMovement()->MovementMode == MOVE_Walking ||
+		GetCharacterMovement()->MovementMode == MOVE_NavWalking)
+	{
+		SetMovementState(EHuruMovementState::Grounded);
+	}
+	else if (GetCharacterMovement()->MovementMode == MOVE_Falling)
+	{
+		SetMovementState(EHuruMovementState::InAir);
+	}
+}
+
 void AHuruBaseCharacter::OnMovementStateChanged(EHuruMovementState PreviousState)
 {
 	if (MovementState == EHuruMovementState::InAir)
