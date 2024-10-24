@@ -30,6 +30,7 @@ public:
 	//                            PROPERTIES & VARIABLES
 	//=====================================================================================
 #pragma region Input
+	
 	UPROPERTY(BlueprintAssignable, Category = "Huru|Input")
 	FJumpPressedSignature JumpPressedDelegate;
 
@@ -38,6 +39,7 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "Huru|Input")
 	FRagdollStateChangedSignature RagdollStateChangedDelegate;
+	
 #pragma endregion
 	
 	//=====================================================================================
@@ -54,11 +56,13 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 #pragma region Ragdoll System
+	
 	UFUNCTION(BlueprintCallable, Category = "Huru|Ragdoll System")
 	virtual void RagdollStart();
 
 	UFUNCTION(BlueprintCallable, Server, Unreliable, Category = "Huru|Ragdoll System")
 	void Server_SetMeshLocationDuringRagdoll(FVector MeshLocation);
+	
 #pragma endregion
 
 #pragma region Rotation System
@@ -106,23 +110,6 @@ public:
 	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Huru|Character States")
 	void Server_SetViewMode(EHuruViewMode NewViewMode, bool bForce);
 
-	/** Rolling 몽타주 재생 복제 */
-	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Huru|Character States")
-	void Server_PlayMontage(UAnimMontage* Montage, float PlayRate);
-
-	UFUNCTION(BlueprintCallable, NetMulticast, Reliable, Category = "Huru|Character States")
-	void Multicast_PlayMontage(UAnimMontage* Montage, float PlayRate);
-
-	/** Ragdoll*/
-	UFUNCTION(BlueprintCallable, Category = "Huru|Character States")
-	void ReplicatedRagdollStart();
-
-	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Huru|Character States")
-	void Server_RagdollStart();
-
-	UFUNCTION(BlueprintCallable, NetMulticast, Reliable, Category = "Huru|Character States")
-	void Multicast_RagdollStart();
-
 	UFUNCTION(BlueprintGetter, Category = "Huru|Character States")
 	EHuruMovementState GetMovementState() const { return MovementState; }
 
@@ -150,15 +137,50 @@ public:
 	UFUNCTION(BlueprintGetter, Category = "Huru|Character States")
 	EHuruGroundedEntryState GetGroundedEntryState() const { return GroundedEntryState; }
 
+	/** Landed, Jumped, Rolling, Mantling and Ragdoll*/
+	/** On Landed*/
+	UFUNCTION(BlueprintCallable, Category = "ALS|Character States")
+	void EventOnLanded();
+
+	UFUNCTION(BlueprintCallable, NetMulticast, Reliable, Category = "ALS|Character States")
+	void Multicast_OnLanded();
+
+	/** On Jumped*/
+	UFUNCTION(BlueprintCallable, Category = "ALS|Character States")
+	void EventOnJumped();
+
+	UFUNCTION(BlueprintCallable, NetMulticast, Reliable, Category = "ALS|Character States")
+	void Multicast_OnJumped();
+
 	UFUNCTION(BlueprintSetter, Category = "Huru|Chracter States")
 	void SetDesiredRotationMode(EHuruRotationMode NewRotMode);
 	
 	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Huru|Chracter States")
 	void Server_SetDesiredRotationMode(EHuruRotationMode NewRotMode);
 	
+	/** Rolling 몽타주 재생 복제 */
+	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Huru|Character States")
+	void Server_PlayMontage(UAnimMontage* Montage, float PlayRate);
+
+	UFUNCTION(BlueprintCallable, NetMulticast, Reliable, Category = "Huru|Character States")
+	void Multicast_PlayMontage(UAnimMontage* Montage, float PlayRate);
+
+	/** Ragdoll*/
+	UFUNCTION(BlueprintCallable, Category = "Huru|Character States")
+	void ReplicatedRagdollStart();
+
+	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Huru|Character States")
+	void Server_RagdollStart();
+
+	UFUNCTION(BlueprintCallable, NetMulticast, Reliable, Category = "Huru|Character States")
+	void Multicast_RagdollStart();
+
 #pragma endregion
 
 #pragma region Movement System
+	
+	UFUNCTION(BlueprintGetter, Category = "Huru|Movement System")
+	bool HasMovementInput() const { return bHasMovementInput; }
 	
 	UFUNCTION(BlueprintCallable, Category = "Huru|Movement System")
 	FHuruMovementSettings GetTargetMovementSettings() const;
@@ -171,6 +193,11 @@ public:
 	
 	UFUNCTION(BlueprintCallable, Category = "Huru|Movement System")
 	bool CanSprint() const;
+
+	/** BP implementable function that called when Breakfall starts */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "ALS|Movement System")
+	void OnBreakfall();
+	virtual void OnBreakfall_Implementation();
 	
 	/** Rolling과 같이 몽타주가 시작될 때 호출되는 BP 구현 가능 함수 */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Huru|Movement System")
@@ -181,12 +208,10 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintImplementableEvent, Category = "Huru|Movement System")
 	UAnimMontage* GetRollAnimation();
 
-	UFUNCTION(BlueprintGetter, Category = "Huru|Movement System")
-	bool HasMovementInput() const { return bHasMovementInput; }
 	
 #pragma endregion
 
-#pragma region
+#pragma region Utility
 
 	UFUNCTION(BlueprintCallable, Category = "Huru|Utility")
 	float GetAnimCurveValue(FName CurveName) const;
@@ -244,6 +269,7 @@ public:
 #pragma endregion 
 
 #pragma region Input
+	
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Huru|Input")
 	void ForwardMovementAction(float Value);
 
@@ -287,6 +313,7 @@ public:
 	void LookingDirectionAction();
 	
 #pragma endregion
+	
 	//=====================================================================================
 	//                            FORCEINLINE FUNCTIONS
 	//=====================================================================================
@@ -302,6 +329,7 @@ protected:
 	TObjectPtr<UHuruCharacterMovementComponent> MyCharacterMovementComponent;
 	
 #pragma region Input
+	
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "Huru|Input")
 	EHuruRotationMode DesiredRotationMode = EHuruRotationMode::LookingDirection;
 	
@@ -319,14 +347,17 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Huru|Input", BlueprintReadOnly)
 	float RollDoubleTapTimeout = 0.3f;
+	
 #pragma endregion
 	
 #pragma region Movement System
+	
 	UPROPERTY(BlueprintReadOnly, Category = "Huru|Movement System")
 	FHuruMovementStateSettings MovementData;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Huru|Movement System")
 	FDataTableRowHandle MovementModel;
+	
 #pragma endregion
 
 #pragma region Camera System
@@ -384,6 +415,7 @@ protected:
 #pragma endregion
 
 #pragma region State_Values
+	
 	UPROPERTY(BlueprintReadOnly, Category = "Huru|State Values")
 	EHuruGroundedEntryState GroundedEntryState;
 	
@@ -407,6 +439,7 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Huru|State Values", ReplicatedUsing = OnRep_ViewMode)
 	EHuruViewMode ViewMode = EHuruViewMode::ThirdPerson;
+	
 #pragma endregion
 
 #pragma region Rotation System
@@ -520,6 +553,16 @@ protected:
 	virtual void OnGaitChanged(EHuruGait PreviousGait);
 
 	virtual void OnViewModeChanged(EHuruViewMode PreviousViewMode);
+
+	virtual void OnStartCrouch(float HalfHeightAdjust, float ScaledHalfHeightAdjust) override;
+
+	virtual void OnEndCrouch(float HalfHeightAdjust, float ScaledHalfHeightAdjust) override;
+
+	virtual void OnJumped_Implementation() override;
+
+	virtual void Landed(const FHitResult& Hit) override;
+
+	void OnLandFrictionReset();
 
 	void SetEssentialValues(float DeltaTime);
 

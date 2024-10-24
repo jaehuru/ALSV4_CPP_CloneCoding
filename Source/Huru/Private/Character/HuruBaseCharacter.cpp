@@ -460,6 +460,11 @@ FVector AHuruBaseCharacter::GetMovementInput() const
 	return ReplicatedCurrentAcceleration;
 }
 
+void AHuruBaseCharacter::OnBreakfall_Implementation()
+{
+	Replicated_PlayMontage(GetRollAnimation(), 1.35);
+}
+
 void AHuruBaseCharacter::Replicated_PlayMontage_Implementation(UAnimMontage* Montage, float PlayRate)
 {
 	// Roll: Simply play a Root Motion Montage.
@@ -512,6 +517,52 @@ void AHuruBaseCharacter::GetCameraParameters(float& TPFOVOut, float& FPFOVOut, b
 	TPFOVOut = ThirdPersonFOV;
 	FPFOVOut = FirstPersonFOV;
 	bRightShoulderOut = bRightShoulder;
+}
+
+void AHuruBaseCharacter::EventOnLanded()
+{
+	const float VelZ = FMath::Abs(GetCharacterMovement()->Velocity.Z);
+
+	if (bRagdollOnLand && VelZ > RagdollOnLandVelocity)
+	{
+		ReplicatedRagdollStart();
+	}
+	else if (bBreakfallOnLand && bHasMovementInput && VelZ >= BreakfallOnLandVelocity)
+	{
+		OnBreakfall();
+	}
+	else
+	{
+		GetCharacterMovement()->BrakingFrictionFactor = bHasMovementInput ? 0.5f : 3.0f;
+
+		// 0.5초 후에 제동 마찰 계수를 0으로 초기화
+		GetWorldTimerManager().SetTimer(OnLandedFrictionResetTimer, this,
+										&AHuruBaseCharacter::OnLandFrictionReset, 0.5f, false);
+	}
+}
+
+void AHuruBaseCharacter::Multicast_OnLanded_Implementation()
+{
+	if (!IsLocallyControlled())
+	{
+		EventOnLanded();
+	}
+}
+
+void AHuruBaseCharacter::EventOnJumped()
+{
+	// 속도가 100 이상일 경우, 새로운 공중 회전값을 속도 회전값으로 설정함
+	InAirRotation = Speed > 100.0f ? LastVelocityRotation : GetActorRotation();
+
+	OnJumpedDelegate.Broadcast();
+}
+
+void AHuruBaseCharacter::Multicast_OnJumped_Implementation()
+{
+	if (!IsLocallyControlled())
+	{
+		EventOnJumped();
+	}
 }
 
 void AHuruBaseCharacter::SetDesiredRotationMode(EHuruRotationMode NewRotMode)
@@ -728,6 +779,56 @@ void AHuruBaseCharacter::OnViewModeChanged(EHuruViewMode PreviousViewMode)
 	{
 		CameraBehavior->ViewMode = ViewMode;
 	}
+}
+
+void AHuruBaseCharacter::OnStartCrouch(float HalfHeightAdjust, float ScaledHalfHeightAdjust)
+{
+	Super::OnStartCrouch(HalfHeightAdjust, ScaledHalfHeightAdjust);
+
+	SetStance(EHuruStance::Crouching);
+}
+
+void AHuruBaseCharacter::OnEndCrouch(float HalfHeightAdjust, float ScaledHalfHeightAdjust)
+{
+	Super::OnEndCrouch(HalfHeightAdjust, ScaledHalfHeightAdjust);
+
+	Super::OnEndCrouch(HalfHeightAdjust, ScaledHalfHeightAdjust);
+
+	SetStance(EHuruStance::Standing);
+}
+
+void AHuruBaseCharacter::OnJumped_Implementation()
+{
+	Super::OnJumped_Implementation();
+
+	if (IsLocallyControlled())
+	{
+		EventOnJumped();
+	}
+	if (HasAuthority())
+	{
+		Multicast_OnJumped();
+	}
+}
+
+void AHuruBaseCharacter::Landed(const FHitResult& Hit)
+{
+	Super::Landed(Hit);
+
+	if (IsLocallyControlled())
+	{
+		EventOnLanded();
+	}
+	if (HasAuthority())
+	{
+		Multicast_OnLanded();
+	}
+}
+
+void AHuruBaseCharacter::OnLandFrictionReset()
+{
+	// 제동 마찰력을 초기화한다
+	GetCharacterMovement()->BrakingFrictionFactor = 0.0f;
 }
 
 void AHuruBaseCharacter::SetEssentialValues(float DeltaTime)

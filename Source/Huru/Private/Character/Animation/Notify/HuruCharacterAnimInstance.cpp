@@ -11,6 +11,8 @@
 
 static const FName NAME_BasePose_CLF(TEXT("BasePose_CLF"));
 static const FName NAME_BasePose_N(TEXT("BasePose_N"));
+static const FName NAME_Enable_FootIK_R(TEXT("Enable_FootIK_R"));
+static const FName NAME_Enable_FootIK_L(TEXT("Enable_FootIK_L"));
 static const FName NAME_Enable_HandIK_L(TEXT("Enable_HandIK_L"));
 static const FName NAME_Enable_HandIK_R(TEXT("Enable_HandIK_R"));
 static const FName NAME_Enable_Transition(TEXT("Enable_Transition"));
@@ -320,6 +322,38 @@ void UHuruCharacterAnimInstance::UpdateLayerValues()
 	LayerBlendingValues.Arm_R_MS = static_cast<float>(1 - FMath::FloorToInt(LayerBlendingValues.Arm_R_LS));
 }
 
+void UHuruCharacterAnimInstance::UpdateFootIK(float DeltaSeconds)
+{
+	FVector FootOffsetLTarget = FVector::ZeroVector;
+	FVector FootOffsetRTarget = FVector::ZeroVector;
+
+	// Update Foot Locking values.
+	SetFootLocking(DeltaSeconds, NAME_Enable_FootIK_L, NAME_FootLock_L,
+				   IkFootL_BoneName, FootIKValues.FootLock_L_Alpha, FootIKValues.UseFootLockCurve_L,
+				   FootIKValues.FootLock_L_Location, FootIKValues.FootLock_L_Rotation);
+	SetFootLocking(DeltaSeconds, NAME_Enable_FootIK_R, NAME_FootLock_R,
+				   IkFootR_BoneName, FootIKValues.FootLock_R_Alpha, FootIKValues.UseFootLockCurve_R,
+				   FootIKValues.FootLock_R_Location, FootIKValues.FootLock_R_Rotation);
+
+	if (MovementState.InAir())
+	{
+		// Reset IK Offsets if In Air
+		SetPelvisIKOffset(DeltaSeconds, FVector::ZeroVector, FVector::ZeroVector);
+		ResetIKOffsets(DeltaSeconds);
+	}
+	else if (!MovementState.Ragdoll())
+	{
+		// Update all Foot Lock and Foot Offset values when not In Air
+		SetFootOffsets(DeltaSeconds, NAME_Enable_FootIK_L, IkFootL_BoneName, NAME__ALSCharacterAnimInstance__root,
+					   FootOffsetLTarget,
+					   FootIKValues.FootOffset_L_Location, FootIKValues.FootOffset_L_Rotation);
+		SetFootOffsets(DeltaSeconds, NAME_Enable_FootIK_R, IkFootR_BoneName, NAME__ALSCharacterAnimInstance__root,
+					   FootOffsetRTarget,
+					   FootIKValues.FootOffset_R_Location, FootIKValues.FootOffset_R_Rotation);
+		SetPelvisIKOffset(DeltaSeconds, FootOffsetLTarget, FootOffsetRTarget);
+	}
+}
+
 void UHuruCharacterAnimInstance::UpdateMovementValues(float DeltaSeconds)
 {
 	// 속도 블렌드를 보간하고 설정함.
@@ -388,6 +422,169 @@ void UHuruCharacterAnimInstance::UpdateRagdollValues()
 	// 속도 길이에 따라 난동(Flail) 속도를 조정함. 랙돌이 빠르게 움직일수록 캐릭터가 더 빠르게 난동을 부림.
 	const float VelocityLength = GetOwningComponent()->GetPhysicsLinearVelocity(NAME__ALSCharacterAnimInstance__root).Size();
 	FlailRate = FMath::GetMappedRangeValueClamped<float, float>({0.0f, 1000.0f}, {0.0f, 1.0f}, VelocityLength);
+}
+
+void UHuruCharacterAnimInstance::SetFootLocking(float DeltaSeconds, FName EnableFootIKCurve, FName FootLockCurve, FName IKFootBone,
+	float& CurFootLockAlpha, bool& UseFootLockCurve, FVector& CurFootLockLoc, FRotator& CurFootLockRot)
+{
+	if (GetCurveValue(EnableFootIKCurve) <= 0.0f)
+	{
+		return;
+	}
+
+	// Step 1: 로컬 발잠금 커브 값을 설정함
+	float FootLockCurveVal;
+
+	if (UseFootLockCurve)
+	{
+		UseFootLockCurve = FMath::Abs(GetCurveValue(NAME__ALSCharacterAnimInstance__RotationAmount)) <= 0.001f ||
+			Character->GetLocalRole() != ROLE_AutonomousProxy;
+		FootLockCurveVal = GetCurveValue(FootLockCurve) * (1.f / GetSkelMeshComponent()->AnimUpdateRateParams->UpdateRate);
+	}
+	else
+	{
+		UseFootLockCurve = GetCurveValue(FootLockCurve) >= 0.99f;
+		FootLockCurveVal = 0.0f;
+	}
+
+	// Step 2: 새 값이 현재 값보다 작거나 1일 때만 발잠금 알파를 업데이트함
+	// 이렇게 하면 발이 잠긴 위치에서만 블렌드 아웃되거나 새로운 위치로 잠길 수 있으며, 절대로 블렌드 인되지 않도록 함
+	if (FootLockCurveVal >= 0.99f || FootLockCurveVal < CurFootLockAlpha)
+	{
+		CurFootLockAlpha = FootLockCurveVal;
+	}
+
+	// Step 3: 발 잠금 커브가 1이면, 새로운 잠금 위치와 회전을 컴포넌트 공간에서 타겟으로 저장함
+	if (CurFootLockAlpha >= 0.99f)
+	{
+		const FTransform& OwnerTransform =
+			GetOwningComponent()->GetSocketTransform(IKFootBone, RTS_Component);
+		CurFootLockLoc = OwnerTransform.GetLocation();
+		CurFootLockRot = OwnerTransform.Rotator();
+	}
+
+	// Step 4: 발 잠금 알파에 가중치가 있으면, 캡슐이 움직이는 동안 발이 고정된 위치에 있도록 발 잠금 오프셋을 업데이트함.
+	if (CurFootLockAlpha > 0.0f)
+	{
+		SetFootLockOffsets(DeltaSeconds, CurFootLockLoc, CurFootLockRot);
+	}
+}
+
+void UHuruCharacterAnimInstance::SetFootLockOffsets(float DeltaSeconds, FVector& LocalLoc, FRotator& LocalRot)
+{
+	FRotator RotationDifference = FRotator::ZeroRotator;
+	// 발이 땅에 고정된 상태를 유지하기 위해, 현재 회전과 마지막으로 업데이트된 회전 사이의 차이를 사용하여 발이 얼마나 회전해야 하는지 계산
+	if (Character->GetCharacterMovement()->IsMovingOnGround())
+	{
+		RotationDifference = CharacterInformation.CharacterActorRotation - Character->GetCharacterMovement()->
+			GetLastUpdateRotation();
+		RotationDifference.Normalize();
+	}
+
+	// 발이 땅에 고정된 상태를 유지하기 위해, 메쉬 회전에 대해 프레임 간에 이동한 거리를 계산하여 발이 얼마나 오프셋되어야 하는지 찾음
+	const FVector& LocationDifference = GetOwningComponent()->GetComponentRotation().UnrotateVector(
+		CharacterInformation.Velocity * DeltaSeconds);
+
+	// 발이 컴포넌트 공간에서 고정된 상태를 유지하기 위해 현재 로컬 위치에서 위치 차이를 빼고, 회전 차이만큼 회전시킴
+	LocalLoc = (LocalLoc - LocationDifference).RotateAngleAxis(RotationDifference.Yaw, FVector::DownVector);
+
+	// 현재 로컬 회전에서 회전 차이를 빼서 새로운 로컬 회전을 구함
+	FRotator Delta = LocalRot - RotationDifference;
+	Delta.Normalize();
+	LocalRot = Delta;
+}
+
+void UHuruCharacterAnimInstance::SetPelvisIKOffset(float DeltaSeconds, FVector FootOffsetLTarget, FVector FootOffsetRTarget)
+{
+	// 평균 발 IK 가중치를 찾아서 골반 알파를 계산한다. 알파가 0이면 오프셋을 지움
+	FootIKValues.PelvisAlpha =
+		(GetCurveValue(NAME_Enable_FootIK_L) + GetCurveValue(NAME_Enable_FootIK_R)) / 2.0f;
+
+	if (FootIKValues.PelvisAlpha > 0.0f)
+	{
+		// Step 1: 새로운 골반 타겟을 가장 낮은 발 오프셋으로 설정함
+		const FVector PelvisTarget = FootOffsetLTarget.Z < FootOffsetRTarget.Z ? FootOffsetLTarget : FootOffsetRTarget;
+
+		// Step 2: 현재 골반 오프셋을 새로운 타겟 값으로 보간(interp)함
+		// 새로운 타겟이 현재 값보다 위에 있는지 아래에 있는지에 따라 서로 다른 속도로 보간함
+		const float InterpSpeed = PelvisTarget.Z > FootIKValues.PelvisOffset.Z ? 10.0f : 15.0f;
+		FootIKValues.PelvisOffset =
+			FMath::VInterpTo(FootIKValues.PelvisOffset, PelvisTarget, DeltaSeconds, InterpSpeed);
+	}
+	else
+	{
+		FootIKValues.PelvisOffset = FVector::ZeroVector;
+	}
+}
+
+void UHuruCharacterAnimInstance::ResetIKOffsets(float DeltaSeconds)
+{
+	// 발 IK 오프셋을 0으로 보간(interp)함
+	FootIKValues.FootOffset_L_Location = FMath::VInterpTo(FootIKValues.FootOffset_L_Location,
+														  FVector::ZeroVector, DeltaSeconds, 15.0f);
+	FootIKValues.FootOffset_R_Location = FMath::VInterpTo(FootIKValues.FootOffset_R_Location,
+														  FVector::ZeroVector, DeltaSeconds, 15.0f);
+	FootIKValues.FootOffset_L_Rotation = FMath::RInterpTo(FootIKValues.FootOffset_L_Rotation,
+														  FRotator::ZeroRotator, DeltaSeconds, 15.0f);
+	FootIKValues.FootOffset_R_Rotation = FMath::RInterpTo(FootIKValues.FootOffset_R_Rotation,
+														  FRotator::ZeroRotator, DeltaSeconds, 15.0f);
+}
+
+void UHuruCharacterAnimInstance::SetFootOffsets(float DeltaSeconds, FName EnableFootIKCurve, FName IKFootBone, FName RootBone,
+	FVector& CurLocationTarget, FVector& CurLocationOffset, FRotator& CurRotationOffset)
+{
+	// Foot IK 커브에 가중치가 있을 경우에만 Foot IK 오프셋 값을 업데이트한다. 만약 가중치가 0이라면, 오프셋 값을 지움
+	if (GetCurveValue(EnableFootIKCurve) <= 0)
+	{
+		CurLocationOffset = FVector::ZeroVector;
+		CurRotationOffset = FRotator::ZeroRotator;
+		return;
+	}
+
+	// Step 1: 발 위치에서 아래로 트레이스를 하여 지형을 찾음
+	// 만약 표면이 걷기 가능한 경우, 충격 위치와 노멀을 저장
+	USkeletalMeshComponent* OwnerComp = GetOwningComponent();
+	FVector IKFootFloorLoc = OwnerComp->GetSocketLocation(IKFootBone);
+	IKFootFloorLoc.Z = OwnerComp->GetSocketLocation(RootBone).Z;
+
+	UWorld* World = GetWorld();
+	check(World);
+
+	FCollisionQueryParams Params;
+	Params.AddIgnoredActor(Character);
+
+	const FVector TraceStart = IKFootFloorLoc + FVector(0.0, 0.0, Config.IK_TraceDistanceAboveFoot);
+	const FVector TraceEnd = IKFootFloorLoc - FVector(0.0, 0.0, Config.IK_TraceDistanceBelowFoot);
+
+	FHitResult HitResult;
+	const bool bHit = World->LineTraceSingleByChannel(HitResult,
+	                                                  TraceStart,
+	                                                  TraceEnd,
+	                                                  ECC_Visibility, Params);
+	
+	FRotator TargetRotOffset = FRotator::ZeroRotator;
+	if (Character->GetCharacterMovement()->IsWalkable(HitResult))
+	{
+		FVector ImpactPoint = HitResult.ImpactPoint;
+		FVector ImpactNormal = HitResult.ImpactNormal;
+
+		// Step 1.1: 임팩트 지점과 예상(평평한) 바닥 위치 간의 위치 차이를 찾음
+		// 이 값들은 발 높이에 노멀을 곱한 값으로 오프셋되어, 경사진 표면에서 더 나은 동작을 얻음
+		CurLocationTarget = (ImpactPoint + ImpactNormal * Config.FootHeight) -
+			(IKFootFloorLoc + FVector(0, 0, Config.FootHeight));
+
+		// Step 1.2: 임팩트 노멀의 아탄젠트 값을 사용하여 회전 오프셋을 계산함
+		TargetRotOffset.Pitch = -FMath::RadiansToDegrees(FMath::Atan2(ImpactNormal.X, ImpactNormal.Z));
+		TargetRotOffset.Roll = FMath::RadiansToDegrees(FMath::Atan2(ImpactNormal.Y, ImpactNormal.Z));
+	}
+
+	// Step 2: 현재 위치 오프셋을 새로운 목표 값으로 보간함
+	// 새로운 목표가 현재 값보다 위에 있는지 아래에 있는지에 따라 서로 다른 속도로 보간함
+	const float InterpSpeed = CurLocationOffset.Z > CurLocationTarget.Z ? 30.f : 15.0f;
+	CurLocationOffset = FMath::VInterpTo(CurLocationOffset, CurLocationTarget, DeltaSeconds, InterpSpeed);
+
+	// Step 3: 현재 회전 오프셋을 새로운 목표 값으로 보간함
+	CurRotationOffset = FMath::RInterpTo(CurRotationOffset, TargetRotOffset, DeltaSeconds, 30.0f);
 }
 
 void UHuruCharacterAnimInstance::RotateInPlaceCheck()

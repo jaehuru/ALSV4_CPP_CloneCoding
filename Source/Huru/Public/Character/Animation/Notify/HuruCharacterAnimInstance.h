@@ -14,7 +14,7 @@ class UCurveFloat;
 class UAnimSequence;
 class UCurveVector;
 /**
- * 
+ * Main anim instance class for character
  */
 UCLASS()
 class HURU_API UHuruCharacterAnimInstance : public UAnimInstance
@@ -108,6 +108,14 @@ public:
 	FHuruAnimGraphLayerBlending LayerBlendingValues;
 
 #pragma endregion
+
+#pragma region Anim Graph - Foot IK
+
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Read Only Data|Anim Graph - Foot IK", Meta = (
+		ShowOnlyInnerProperties))
+	FHuruAnimGraphFootIK FootIKValues;
+	
+#pragma endregion 
 
 #pragma region Turn In Place
 	
@@ -264,6 +272,8 @@ private:
 	void UpdateAimingValues(float DeltaSeconds);
 
 	void UpdateLayerValues();
+
+	void UpdateFootIK(float DeltaSeconds);
 	
 	void UpdateMovementValues(float DeltaSeconds);
 
@@ -272,6 +282,23 @@ private:
 	void UpdateInAirValues(float DeltaSeconds);
 
 	void UpdateRagdollValues();
+
+#pragma endregion
+
+#pragma region Foot IK
+
+	void SetFootLocking(float DeltaSeconds, FName EnableFootIKCurve, FName FootLockCurve, FName IKFootBone,
+						  float& CurFootLockAlpha, bool& UseFootLockCurve,
+						  FVector& CurFootLockLoc, FRotator& CurFootLockRot);
+
+	void SetFootLockOffsets(float DeltaSeconds, FVector& LocalLoc, FRotator& LocalRot);
+
+	void SetPelvisIKOffset(float DeltaSeconds, FVector FootOffsetLTarget, FVector FootOffsetRTarget);
+
+	void ResetIKOffsets(float DeltaSeconds);
+
+	void SetFootOffsets(float DeltaSeconds, FName EnableFootIKCurve, FName IKFootBone, FName RootBone,
+						  FVector& CurLocationTarget, FVector& CurLocationOffset, FRotator& CurRotationOffset);
 
 #pragma endregion 
 
