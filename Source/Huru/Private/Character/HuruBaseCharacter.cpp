@@ -3,7 +3,7 @@
 //Huru
 #include "Character/HuruBaseCharacter.h"
 #include "Character/HuruCharacterMovementComponent.h"
-#include "Character/Animation/Notify/HuruPlayerCameraBehavior.h"
+#include "Character/Animation/HuruPlayerCameraBehavior.h"
 //Engine
 #include "Components/CapsuleComponent.h"
 #include "Kismet/KismetMathLibrary.h"
@@ -517,6 +517,11 @@ void AHuruBaseCharacter::GetCameraParameters(float& TPFOVOut, float& FPFOVOut, b
 	TPFOVOut = ThirdPersonFOV;
 	FPFOVOut = FirstPersonFOV;
 	bRightShoulderOut = bRightShoulder;
+}
+
+void AHuruBaseCharacter::SetGroundedEntryState(EHuruGroundedEntryState NewState)
+{
+	GroundedEntryState = NewState;
 }
 
 void AHuruBaseCharacter::EventOnLanded()

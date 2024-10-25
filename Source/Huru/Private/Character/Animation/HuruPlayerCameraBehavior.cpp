@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Character/Animation/Notify/HuruPlayerCameraBehavior.h"
+#include "Character/Animation/HuruPlayerCameraBehavior.h"
 #include "Character/HuruBaseCharacter.h"
 
 void UHuruPlayerCameraBehavior::SetRotationMode(EHuruRotationMode RotationMode)

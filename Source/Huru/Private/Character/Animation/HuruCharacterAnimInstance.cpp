@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 //Huru
-#include "Character/Animation/Notify/HuruCharacterAnimInstance.h"
+#include "Character/Animation/HuruCharacterAnimInstance.h"
 #include "Character/HuruBaseCharacter.h"
 #include "Library/HuruMathLibrary.h"
 //Engine
@@ -381,7 +381,7 @@ void UHuruCharacterAnimInstance::UpdateMovementValues(float DeltaSeconds)
 
 	// 서있는 상태와 웅크린 상태의 재생 속도를 설정함.
 	Grounded.StandingPlayRate = CalculateStandingPlayRate();
-	Grounded.CrouchingPlayRate = CalculateCrouchingPlayRate();
+	Grounded.CrouchingPlayRate = CalculateCrouchingPlayRate(); 
 }
 
 void UHuruCharacterAnimInstance::UpdateRotationValues()

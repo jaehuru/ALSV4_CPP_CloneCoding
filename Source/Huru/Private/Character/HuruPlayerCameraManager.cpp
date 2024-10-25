@@ -3,7 +3,7 @@
 //Huru
 #include "Character/HuruPlayerCameraManager.h"
 #include "Character/HuruBaseCharacter.h"
-#include "Character/Animation/Notify/HuruPlayerCameraBehavior.h"
+#include "Character/Animation/HuruPlayerCameraBehavior.h"
 //Engine
 #include "Kismet/KismetMathLibrary.h"
 

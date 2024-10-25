@@ -9,6 +9,7 @@
 
 #include "HuruCharacterAnimInstance.generated.h"
 
+class UHuruCharacterMovementComponent;
 class AHuruBaseCharacter;
 class UCurveFloat;
 class UAnimSequence;
@@ -25,9 +26,12 @@ public:
 	//=====================================================================================
 	//                            PROPERTIES & VARIABLES
 	//=====================================================================================
-	/** References */
+#pragma region References
+	
 	UPROPERTY(BlueprintReadOnly, Category = "Read Only Data|Character Information")
 	TObjectPtr<AHuruBaseCharacter> Character = nullptr;
+
+#pragma endregion 
 
 #pragma region Character Information
 	

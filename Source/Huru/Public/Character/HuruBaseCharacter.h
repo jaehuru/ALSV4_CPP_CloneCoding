@@ -134,6 +134,9 @@ public:
 	UFUNCTION(BlueprintGetter, Category = "Huru|Character States")
 	EHuruViewMode GetViewMode() const { return ViewMode; }
 
+	UFUNCTION(BlueprintCallable, Category = "Huru|Character States")
+	void SetGroundedEntryState(EHuruGroundedEntryState NewState);
+
 	UFUNCTION(BlueprintGetter, Category = "Huru|Character States")
 	EHuruGroundedEntryState GetGroundedEntryState() const { return GroundedEntryState; }
 
