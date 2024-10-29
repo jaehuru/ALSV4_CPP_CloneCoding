@@ -78,7 +78,8 @@ void UHuruCharacterAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 
 	UpdateAimingValues(DeltaSeconds);
 	UpdateLayerValues();
-
+	UpdateFootIK(DeltaSeconds);
+	
 	if (MovementState.Grounded())
 	{
 		// 움직이는지 체크하고, IsMoving와 HasMovementInput가 참이거나 Speed가 150보다 크면 이동 애니메이션을 활성화함.
@@ -764,11 +765,11 @@ FVector UHuruCharacterAnimInstance::CalculateRelativeAccelerationAmount() const
 
 float UHuruCharacterAnimInstance::CalculateStrideBlend() const
 {
-	// Calculate the Stride Blend. This value is used within the blendspaces to scale the stride (distance feet travel)
-	// so that the character can walk or run at different movement speeds.
-	// It also allows the walk or run gait animations to blend independently while still matching the animation speed to
-	// the movement speed, preventing the character from needing to play a half walk+half run blend.
-	// The curves are used to map the stride amount to the speed for maximum control.
+	// 스트라이드 블렌드를 계산함. 이 값은 블렌드 스페이스 내에서 발이 이동하는 거리를 조절하는 데 사용됨.
+	// 캐릭터가 다양한 이동 속도로 걷거나 뛸 수 있게 해줌.
+	// 걷기 애니메이션이나 뛰기 애니메이션을 독립적으로 블렌드하면서 애니메이션 속도를 이동 속도와 맞추게 해줘서,
+	// 캐릭터가 반만 걷고 반만 뛰는 애니메이션을 재생할 필요가 없게 됨.
+	// 이 커브들은 최대한의 제어를 위해 속도에 맞춰 스트라이드 양을 매핑하는 데 사용됨.
 	const float CurveTime = CharacterInformation.Speed / GetOwningComponent()->GetComponentScale().Z;
 	const float ClampedGait = GetAnimCurveClamped(NAME_W_Gait, -1.0, 0.0f, 1.0f);
 	const float LerpedStrideBlend =

@@ -4,6 +4,7 @@
 #include "Character/HuruBaseCharacter.h"
 #include "Character/HuruCharacterMovementComponent.h"
 #include "Character/Animation/HuruPlayerCameraBehavior.h"
+#include "Character/Animation/HuruCharacterAnimInstance.h"
 //Engine
 #include "Components/CapsuleComponent.h"
 #include "Kismet/KismetMathLibrary.h"
@@ -38,7 +39,7 @@ void AHuruBaseCharacter::BeginPlay()
 	// 캐릭터 블루프린트(CharacterBP) 후에 메쉬와 애니메이션 블루프린트(AnimBP)가 
 	// 업데이트되도록 설정해서 최신 값을 받도록 보장
 	GetMesh()->AddTickPrerequisiteActor(this);
-
+	
 	// 이동 모델 설정
 	SetMovementModel();
 

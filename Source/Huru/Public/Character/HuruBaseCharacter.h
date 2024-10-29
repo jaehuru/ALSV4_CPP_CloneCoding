@@ -10,7 +10,7 @@
 #include "HuruBaseCharacter.generated.h"
 
 class UHuruPlayerCameraBehavior;
-
+class UAnimMontage;
 enum class EVisibilityBasedAnimTickOption : uint8;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FJumpPressedSignature);
@@ -142,17 +142,17 @@ public:
 
 	/** Landed, Jumped, Rolling, Mantling and Ragdoll*/
 	/** On Landed*/
-	UFUNCTION(BlueprintCallable, Category = "ALS|Character States")
+	UFUNCTION(BlueprintCallable, Category = "Huru|Character States")
 	void EventOnLanded();
 
-	UFUNCTION(BlueprintCallable, NetMulticast, Reliable, Category = "ALS|Character States")
+	UFUNCTION(BlueprintCallable, NetMulticast, Reliable, Category = "Huru|Character States")
 	void Multicast_OnLanded();
 
 	/** On Jumped*/
-	UFUNCTION(BlueprintCallable, Category = "ALS|Character States")
+	UFUNCTION(BlueprintCallable, Category = "Huru|Character States")
 	void EventOnJumped();
 
-	UFUNCTION(BlueprintCallable, NetMulticast, Reliable, Category = "ALS|Character States")
+	UFUNCTION(BlueprintCallable, NetMulticast, Reliable, Category = "Huru|Character States")
 	void Multicast_OnJumped();
 
 	UFUNCTION(BlueprintSetter, Category = "Huru|Chracter States")
@@ -198,7 +198,7 @@ public:
 	bool CanSprint() const;
 
 	/** BP implementable function that called when Breakfall starts */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "ALS|Movement System")
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Huru|Movement System")
 	void OnBreakfall();
 	virtual void OnBreakfall_Implementation();
 	

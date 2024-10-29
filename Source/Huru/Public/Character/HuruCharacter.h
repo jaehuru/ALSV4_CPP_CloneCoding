@@ -7,8 +7,8 @@
 #include "HuruCharacter.generated.h"
 
 
-UCLASS(config=Game)
-class AHuruCharacter : public AHuruBaseCharacter
+UCLASS(Blueprintable, BlueprintType)
+class HURU_API AHuruCharacter : public AHuruBaseCharacter
 {
 	GENERATED_BODY()
 
