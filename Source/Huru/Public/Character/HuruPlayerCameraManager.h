@@ -36,6 +36,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Huru|Camera")
 	float GetCameraBehaviorParam(FName CurveName) const;
 
+	/** 디버그 로직이 블루프린트에서 구현됨 */
+	UFUNCTION(BlueprintCallable, BlueprintImplementableEvent, Category = "ALS|Camera")
+	void DrawDebugTargets(FVector PivotTargetLocation);
+
 protected:
 	//=====================================================================================
 	//                            PROPERTIES & VARIABLES

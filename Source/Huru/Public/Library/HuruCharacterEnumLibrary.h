@@ -48,6 +48,15 @@ enum class EHuruMovementState : uint8
 	Ragdoll
 };
 
+/**
+ * Character overlay state. Note: Also edit related struct in ALSStructEnumLibrary if you add new enums
+ */
+UENUM(BlueprintType, meta = (ScriptName = "Huru_OverlayState"))
+enum class EHuruOverlayState : uint8
+{
+	Default,
+};
+
 /** 캐릭터 회전 모드. note: 새로운 열거형을 추가할 경우 HuruStructEnumLibrary의 관련 구조체도 수정해야 함s*/
 UENUM(BlueprintType, meta = (ScriptName="HuruRotationMode"))
 enum class EHuruRotationMode : uint8

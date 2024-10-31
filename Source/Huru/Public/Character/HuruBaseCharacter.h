@@ -135,6 +135,15 @@ public:
 	EHuruViewMode GetViewMode() const { return ViewMode; }
 
 	UFUNCTION(BlueprintCallable, Category = "Huru|Character States")
+	void SetOverlayState(EHuruOverlayState NewState, bool bForce = false);
+	
+	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Huru|Character States")
+	void Server_SetOverlayState(EHuruOverlayState NewState, bool bForce);
+
+	UFUNCTION(BlueprintGetter, Category = "Huru|Character States")
+	EHuruOverlayState GetOverlayState() const { return OverlayState; }
+
+	UFUNCTION(BlueprintCallable, Category = "Huru|Character States")
 	void SetGroundedEntryState(EHuruGroundedEntryState NewState);
 
 	UFUNCTION(BlueprintGetter, Category = "Huru|Character States")
@@ -418,6 +427,9 @@ protected:
 #pragma endregion
 
 #pragma region State_Values
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Huru|State Values", ReplicatedUsing = OnRep_OverlayState)
+	EHuruOverlayState OverlayState = EHuruOverlayState::Default;
 	
 	UPROPERTY(BlueprintReadOnly, Category = "Huru|State Values")
 	EHuruGroundedEntryState GroundedEntryState;
@@ -559,6 +571,8 @@ protected:
 
 	virtual void OnViewModeChanged(EHuruViewMode PreviousViewMode);
 
+	virtual void OnOverlayStateChanged(EHuruOverlayState PreviousState);
+
 	virtual void OnStartCrouch(float HalfHeightAdjust, float ScaledHalfHeightAdjust) override;
 
 	virtual void OnEndCrouch(float HalfHeightAdjust, float ScaledHalfHeightAdjust) override;
@@ -600,7 +614,12 @@ protected:
 	UFUNCTION(Category = "Huru|Replication")
 	void OnRep_ViewMode(EHuruViewMode PrevViewMode);
 
+	UFUNCTION(Category = "ALS|Replication")
+	void OnRep_OverlayState(EHuruOverlayState PrevOverlayState);
+
 #pragma endregion
 };
+
+
 
 

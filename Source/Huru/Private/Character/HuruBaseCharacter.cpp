@@ -520,6 +520,30 @@ void AHuruBaseCharacter::GetCameraParameters(float& TPFOVOut, float& FPFOVOut, b
 	bRightShoulderOut = bRightShoulder;
 }
 
+void AHuruBaseCharacter::OnOverlayStateChanged(const EHuruOverlayState PreviousState)
+{
+}
+
+void AHuruBaseCharacter::SetOverlayState(EHuruOverlayState NewState, bool bForce)
+{
+	if (bForce || OverlayState != NewState)
+	{
+		const EHuruOverlayState Prev = OverlayState;
+		OverlayState = NewState;
+		OnOverlayStateChanged(Prev);
+
+		if (GetLocalRole() == ROLE_AutonomousProxy)
+		{
+			Server_SetOverlayState(NewState, bForce);
+		}
+	}
+}
+
+void AHuruBaseCharacter::Server_SetOverlayState_Implementation(EHuruOverlayState NewState, bool bForce)
+{
+	SetOverlayState(NewState, bForce);
+}
+
 void AHuruBaseCharacter::SetGroundedEntryState(EHuruGroundedEntryState NewState)
 {
 	GroundedEntryState = NewState;
@@ -593,6 +617,11 @@ void AHuruBaseCharacter::OnRep_RotationMode(EHuruRotationMode PrevRotMode)
 void AHuruBaseCharacter::OnRep_ViewMode(EHuruViewMode PrevViewMode)
 {
 	OnViewModeChanged(PrevViewMode);
+}
+
+void AHuruBaseCharacter::OnRep_OverlayState(EHuruOverlayState PrevOverlayState)
+{
+	OnOverlayStateChanged(PrevOverlayState);
 }
 
 void AHuruBaseCharacter::RagdollUpdate(float DeltaTime)
@@ -691,7 +720,7 @@ void AHuruBaseCharacter::OnMovementModeChanged(EMovementMode PrevMovementMode, u
 	{
 		SetMovementState(EHuruMovementState::Grounded);
 	}
-	else if (GetCharacterMovement()->MovementMode == MOVE_Falling)
+ 	else if (GetCharacterMovement()->MovementMode == MOVE_Falling)
 	{
 		SetMovementState(EHuruMovementState::InAir);
 	}
