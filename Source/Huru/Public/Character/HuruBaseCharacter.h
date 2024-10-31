@@ -618,6 +618,7 @@ protected:
 	void OnRep_OverlayState(EHuruOverlayState PrevOverlayState);
 
 #pragma endregion
+	
 };
 
 

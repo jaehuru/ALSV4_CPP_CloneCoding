@@ -15,26 +15,7 @@ UCLASS()
 class HURU_API UHuruCharacterMovementComponent : public UCharacterMovementComponent
 {
 	GENERATED_BODY()
-	
-public:
-	//=====================================================================================
-	//                            PROPERTIES & VARIABLES
-	//=====================================================================================
-	/** 이동 설정 변수*/
-	UPROPERTY()
-	uint8 bRequestMovementSettingsChange;
 
-	UPROPERTY()
-	EHuruGait AllowedGait;
-	
-	UPROPERTY(BlueprintReadOnly, Category = "Huru|Movement System")
-	FHuruMovementSettings CurrentMovementSettings;
-	
-	//=====================================================================================
-	//                                   FUNCTIONS
-	//=====================================================================================
-	UHuruCharacterMovementComponent(const FObjectInitializer& ObjectInitializer);
-	
 	class HURU_API FSavedMove_My : public FSavedMove_Character
 	{
 	public:
@@ -61,7 +42,26 @@ public:
 
 		virtual FSavedMovePtr AllocateNewMove() override;
 	};
+	
+	
+public:
+	//=====================================================================================
+	//                            PROPERTIES & VARIABLES
+	//=====================================================================================
+	/** 이동 설정 변수*/
+	UPROPERTY()
+	uint8 bRequestMovementSettingsChange;
 
+	UPROPERTY()
+	EHuruGait AllowedGait;
+	
+	UPROPERTY(BlueprintReadOnly, Category = "Huru|Movement System")
+	FHuruMovementSettings CurrentMovementSettings;
+	
+	//=====================================================================================
+	//                                   FUNCTIONS
+	//=====================================================================================
+	UHuruCharacterMovementComponent(const FObjectInitializer& ObjectInitializer);
 	
 	virtual void UpdateFromCompressedFlags(uint8 Flags) override;
 	virtual class FNetworkPredictionData_Client* GetPredictionData_Client() const override;
