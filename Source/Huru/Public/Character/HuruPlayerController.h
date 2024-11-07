@@ -28,7 +28,7 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Huru|Input")
 	TObjectPtr<UInputMappingContext> DefaultInputMappingContext = nullptr;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "v|Input")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Huru|Input")
 	TObjectPtr<UInputMappingContext> DebugInputMappingContext = nullptr;
 	//=====================================================================================
 	//                                   FUNCTIONS
