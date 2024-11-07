@@ -9,6 +9,7 @@
 
 #include "HuruBaseCharacter.generated.h"
 
+class UHuruDebugComponent;
 class UHuruPlayerCameraBehavior;
 class UAnimMontage;
 enum class EVisibilityBasedAnimTickOption : uint8;
@@ -618,6 +619,10 @@ protected:
 	void OnRep_OverlayState(EHuruOverlayState PrevOverlayState);
 
 #pragma endregion
+
+private:
+	UPROPERTY()
+	TObjectPtr<UHuruDebugComponent> HuruDebugComponent = nullptr;
 	
 };
 

@@ -5,6 +5,7 @@
 #include "Character/HuruCharacterMovementComponent.h"
 #include "Character/Animation/HuruPlayerCameraBehavior.h"
 #include "Character/Animation/HuruCharacterAnimInstance.h"
+#include "Character/Component/HuruDebugComponent.h"
 //Engine
 #include "Components/CapsuleComponent.h"
 #include "Kismet/KismetMathLibrary.h"
@@ -73,6 +74,8 @@ void AHuruBaseCharacter::BeginPlay()
 
 	// 캐릭터 이동 설정을 목표 이동 설정 값으로 설정
 	MyCharacterMovementComponent->SetMovementSettings(GetTargetMovementSettings());
+
+	HuruDebugComponent = FindComponentByClass<UHuruDebugComponent>();
 }
 
 void AHuruBaseCharacter::Tick(float DeltaTime)
@@ -687,6 +690,19 @@ void AHuruBaseCharacter::SetActorLocationDuringRagdoll(float DeltaTime)
 	FHitResult HitResult;
 	const bool bHit = World->LineTraceSingleByChannel(HitResult, TargetRagdollLocation, TraceVect,
 	                                                  ECC_Visibility, Params);
+
+	if (HuruDebugComponent && HuruDebugComponent->GetShowTraces())
+	{
+		UHuruDebugComponent::DrawDebugLineTraceSingle(World,
+													 TargetRagdollLocation,
+													 TraceVect,
+													 EDrawDebugTrace::Type::ForOneFrame,
+													 bHit,
+													 HitResult,
+													 FLinearColor::Red,
+													 FLinearColor::Green,
+													 1.0f);
+	}
 	
 	bRagdollOnGround = HitResult.IsValidBlockingHit();
 	FVector NewRagdollLoc = TargetRagdollLocation;

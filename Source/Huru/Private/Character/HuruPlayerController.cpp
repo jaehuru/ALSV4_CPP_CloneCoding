@@ -8,6 +8,7 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "InputMappingContext.h"
+#include "Character/Component/HuruDebugComponent.h"
 
 void AHuruPlayerController::OnPossess(APawn* NewPawn)
 {
@@ -206,3 +207,80 @@ void AHuruPlayerController::LookingDirectionAction(const FInputActionValue& Valu
 		PossessedCharacter->LookingDirectionAction();
 	}
 }
+
+void AHuruPlayerController::DebugToggleHudAction(const FInputActionValue& Value)
+{
+	if (PossessedCharacter && Value.Get<bool>())
+	{
+		UHuruDebugComponent* DebugComp = Cast<UHuruDebugComponent>(PossessedCharacter->GetComponentByClass(UHuruDebugComponent::StaticClass()));
+		if (DebugComp)
+		{
+			DebugComp->ToggleHud();
+		}
+	}
+}
+
+void AHuruPlayerController::DebugToggleDebugViewAction(const FInputActionValue& Value)
+{
+	if (PossessedCharacter && Value.Get<bool>())
+	{
+		UHuruDebugComponent* DebugComp = Cast<UHuruDebugComponent>(PossessedCharacter->GetComponentByClass(UHuruDebugComponent::StaticClass()));
+		if (DebugComp)
+		{
+			DebugComp->ToggleDebugView();
+		}
+	}
+}
+
+void AHuruPlayerController::DebugToggleTracesAction(const FInputActionValue& Value)
+{
+	if (PossessedCharacter && Value.Get<bool>())
+	{
+		UHuruDebugComponent* DebugComp = Cast<UHuruDebugComponent>(PossessedCharacter->GetComponentByClass(UHuruDebugComponent::StaticClass()));
+		if (DebugComp)
+		{
+			DebugComp->ToggleTraces();
+		}
+	}
+}
+
+void AHuruPlayerController::DebugToggleShapesAction(const FInputActionValue& Value)
+{
+	if (PossessedCharacter && Value.Get<bool>())
+	{
+		UHuruDebugComponent* DebugComp = Cast<UHuruDebugComponent>(PossessedCharacter->GetComponentByClass(UHuruDebugComponent::StaticClass()));
+		if (DebugComp)
+		{
+			DebugComp->ToggleDebugShapes();
+		}
+	}
+}
+
+void AHuruPlayerController::DebugToggleCharacterInfoAction(const FInputActionValue& Value)
+{
+	if (PossessedCharacter && Value.Get<bool>())
+	{
+		UHuruDebugComponent* DebugComp = Cast<UHuruDebugComponent>(PossessedCharacter->GetComponentByClass(UHuruDebugComponent::StaticClass()));
+		if (DebugComp)
+		{
+			DebugComp->ToggleCharacterInfo();
+		}
+	}
+}
+
+void AHuruPlayerController::DebugToggleSlomoAction(const FInputActionValue& Value)
+{
+	if (PossessedCharacter && Value.Get<bool>())
+	{
+		UHuruDebugComponent* DebugComp = Cast<UHuruDebugComponent>(PossessedCharacter->GetComponentByClass(UHuruDebugComponent::StaticClass()));
+		if (DebugComp)
+		{
+			DebugComp->ToggleSlomo();
+		}
+	}
+}
+
+
+
+
+

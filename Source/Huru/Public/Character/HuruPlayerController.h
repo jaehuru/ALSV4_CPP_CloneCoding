@@ -12,7 +12,7 @@ class UInputMappingContext;
 /**
  * player controller class
  */
-UCLASS()
+UCLASS(Blueprintable, BlueprintType)
 class HURU_API AHuruPlayerController : public APlayerController
 {
 	GENERATED_BODY()
@@ -27,6 +27,9 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Huru|Input")
 	TObjectPtr<UInputMappingContext> DefaultInputMappingContext = nullptr;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "v|Input")
+	TObjectPtr<UInputMappingContext> DebugInputMappingContext = nullptr;
 	//=====================================================================================
 	//                                   FUNCTIONS
 	//=====================================================================================
@@ -91,6 +94,27 @@ protected:
 	void LookingDirectionAction(const FInputActionValue& Value);
 	
 #pragma endregion
+
+#pragma region Debug_Actions
+
+	UFUNCTION()
+	void DebugToggleHudAction(const FInputActionValue& Value);
+
+	UFUNCTION()
+	void DebugToggleDebugViewAction(const FInputActionValue& Value);
+
+	UFUNCTION()
+	void DebugToggleTracesAction(const FInputActionValue& Value);
+
+	UFUNCTION()
+	void DebugToggleShapesAction(const FInputActionValue& Value);
 	
+	UFUNCTION()
+	void DebugToggleCharacterInfoAction(const FInputActionValue& Value);
+
+	UFUNCTION()
+	void DebugToggleSlomoAction(const FInputActionValue& Value);
+
+#pragma endregion
 	
 };

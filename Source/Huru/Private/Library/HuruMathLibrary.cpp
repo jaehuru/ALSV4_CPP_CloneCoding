@@ -25,7 +25,8 @@ FVector UHuruMathLibrary::GetCapsuleLocationFromBase(FVector BaseLocation, float
 	return BaseLocation;
 }
 
-bool UHuruMathLibrary::CapsuleHasRoomCheck(UCapsuleComponent* Capsule, FVector TargetLocation, float HeightOffset, float RadiusOffset)
+bool UHuruMathLibrary::CapsuleHasRoomCheck(UCapsuleComponent* Capsule, FVector TargetLocation, float HeightOffset, float RadiusOffset,
+	EDrawDebugTrace::Type DebugType, bool DrawDebugTrace)
 {
 	// 캡슐이 목표 위치에 있을 공간이 있는지 확인하기 위해 트레이스를 수행함.
 	const float ZTarget = Capsule->GetScaledCapsuleHalfHeight_WithoutHemisphere() - RadiusOffset + HeightOffset;

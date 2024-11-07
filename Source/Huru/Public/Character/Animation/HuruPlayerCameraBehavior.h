@@ -14,7 +14,7 @@ class AHuruPlayerController;
 /**
  * Main class for player camera movement behavior
  */
-UCLASS()
+UCLASS(Blueprintable, BlueprintType)
 class HURU_API UHuruPlayerCameraBehavior : public UAnimInstance
 {
 	GENERATED_BODY()

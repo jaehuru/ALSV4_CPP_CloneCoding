@@ -6,11 +6,12 @@
 #include "Camera/PlayerCameraManager.h"
 #include "HuruPlayerCameraManager.generated.h"
 
+class UHuruDebugComponent;
 class AHuruBaseCharacter;
 /**
  * Player camera manager class
  */
-UCLASS()
+UCLASS(Blueprintable, BlueprintType)
 class HURU_API AHuruPlayerCameraManager : public APlayerCameraManager
 {
 	GENERATED_BODY()
@@ -76,5 +77,9 @@ protected:
 
 	UFUNCTION(BlueprintCallable, Category = "Huru|Camera")
 	bool CustomCameraBehavior(float DeltaTime, FVector& Location, FRotator& Rotation, float& FOV);
+
+private:
+	UPROPERTY()
+	TObjectPtr<UHuruDebugComponent> HuruDebugComponent = nullptr;
 	
 };

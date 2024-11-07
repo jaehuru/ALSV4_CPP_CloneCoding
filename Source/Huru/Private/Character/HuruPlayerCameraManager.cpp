@@ -4,6 +4,7 @@
 #include "Character/HuruPlayerCameraManager.h"
 #include "Character/HuruBaseCharacter.h"
 #include "Character/Animation/HuruPlayerCameraBehavior.h"
+#include "Character/Component/HuruDebugComponent.h"
 //Engine
 #include "Kismet/KismetMathLibrary.h"
 
@@ -52,7 +53,8 @@ void AHuruPlayerCameraManager::OnPossess(AHuruBaseCharacter* NewCharacter)
 	const FVector& TPSLoc = ControlledCharacter->GetThirdPersonPivotTarget().GetLocation();
 	SetActorLocation(TPSLoc);
 	SmoothedPivotTarget.SetLocation(TPSLoc);
-	
+
+	HuruDebugComponent = ControlledCharacter->FindComponentByClass<UHuruDebugComponent>();
 }
 
 float AHuruPlayerCameraManager::GetCameraBehaviorParam(FName CurveName) const
@@ -184,6 +186,20 @@ bool AHuruPlayerCameraManager::CustomCameraBehavior(float DeltaTime, FVector& Lo
 	const FCollisionShape SphereCollisionShape = FCollisionShape::MakeSphere(TraceRadius);
 	const bool bHit = World->SweepSingleByChannel(HitResult, TraceOrigin, TargetCameraLocation, FQuat::Identity,
 	                                              TraceChannel, SphereCollisionShape, Params);
+
+	if (HuruDebugComponent && HuruDebugComponent->GetShowTraces())
+	{
+		UHuruDebugComponent::DrawDebugSphereTraceSingle(World,
+													   TraceOrigin,
+													   TargetCameraLocation,
+													   SphereCollisionShape,
+													   EDrawDebugTrace::Type::ForOneFrame,
+													   bHit,
+													   HitResult,
+													   FLinearColor::Red,
+													   FLinearColor::Green,
+													   5.0f);
+	}
 
 	if (HitResult.IsValidBlockingHit())
 	{

@@ -9,6 +9,7 @@
 
 #include "HuruCharacterAnimInstance.generated.h"
 
+class UHuruDebugComponent;
 class UHuruCharacterMovementComponent;
 class AHuruBaseCharacter;
 class UCurveFloat;
@@ -17,7 +18,7 @@ class UCurveVector;
 /**
  * Main anim instance class for character
  */
-UCLASS()
+UCLASS(Blueprintable, BlueprintType)
 class HURU_API UHuruCharacterAnimInstance : public UAnimInstance
 {
 	GENERATED_BODY()
@@ -193,6 +194,8 @@ public:
 	//                                   FUNCTIONS
 	//=====================================================================================
 	virtual void NativeInitializeAnimation() override;
+
+	virtual void NativeBeginPlay() override;
 	
 	virtual void NativeUpdateAnimation(float DeltaSeconds) override;
 
@@ -261,6 +264,9 @@ private:
 	FTimerHandle OnJumpedTimer;
 
 	bool bCanPlayDynamicTransition = true;
+
+	UPROPERTY()
+	TObjectPtr<UHuruDebugComponent> HuruDebugComponent = nullptr;
 	
 	//=====================================================================================
 	//                                   FUNCTIONS

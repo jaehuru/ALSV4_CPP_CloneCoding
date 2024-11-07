@@ -4,6 +4,7 @@
 #include "Character/Animation/HuruCharacterAnimInstance.h"
 #include "Character/HuruBaseCharacter.h"
 #include "Library/HuruMathLibrary.h"
+#include "Character/Component/HuruDebugComponent.h"
 //Engine
 #include "Components/CapsuleComponent.h"
 #include "Curves/CurveVector.h"
@@ -44,6 +45,16 @@ void UHuruCharacterAnimInstance::NativeInitializeAnimation()
 	if (Character)
 	{
 		Character->OnJumpedDelegate.AddUniqueDynamic(this, &UHuruCharacterAnimInstance::OnJumped);
+	}
+}
+
+void UHuruCharacterAnimInstance::NativeBeginPlay()
+{
+	// NativeInitializeAnimation() 호출 시 플레이어 폰 컴포넌트가 제대로 초기화되지 않은 것 같음
+	// 그래서 여기서 Huru 디버그 컴포넌트를 가져오려고 시도하는 이유임
+	if (APawn* Owner = TryGetPawnOwner())
+	{
+		HuruDebugComponent = Owner->FindComponentByClass<UHuruDebugComponent>();
 	}
 }
 
@@ -562,6 +573,20 @@ void UHuruCharacterAnimInstance::SetFootOffsets(float DeltaSeconds, FName Enable
 	                                                  TraceStart,
 	                                                  TraceEnd,
 	                                                  ECC_Visibility, Params);
+
+	if (HuruDebugComponent && HuruDebugComponent->GetShowTraces())
+	{
+		UHuruDebugComponent::DrawDebugLineTraceSingle(
+			World,
+			TraceStart,
+			TraceEnd,
+			EDrawDebugTrace::Type::ForOneFrame,
+			bHit,
+			HitResult,
+			FLinearColor::Red,
+			FLinearColor::Green,
+			5.0f);
+	}
 	
 	FRotator TargetRotOffset = FRotator::ZeroRotator;
 	if (Character->GetCharacterMovement()->IsWalkable(HitResult))
@@ -853,6 +878,20 @@ float UHuruCharacterAnimInstance::CalculateLandPrediction() const
 		CapsuleWorldLoc + TraceLength,
 		FQuat::Identity,
 	ECC_Visibility, CapsuleCollisionShape, Params);
+
+	if (HuruDebugComponent && HuruDebugComponent->GetShowTraces())
+	{
+		UHuruDebugComponent::DrawDebugCapsuleTraceSingle(World,
+														CapsuleWorldLoc,
+														CapsuleWorldLoc + TraceLength,
+														CapsuleCollisionShape,
+														EDrawDebugTrace::Type::ForOneFrame,
+														bHit,
+														HitResult,
+														FLinearColor::Red,
+														FLinearColor::Green,
+														5.0f);
+	}
 
 	if (Character->GetCharacterMovement()->IsWalkable(HitResult))
 	{
