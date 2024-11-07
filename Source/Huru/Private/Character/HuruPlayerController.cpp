@@ -4,11 +4,11 @@
 #include "Character/HuruPlayerController.h"
 #include "Character/HuruBaseCharacter.h"
 #include "Character/HuruPlayerCameraManager.h"
+#include "Character/Component/HuruDebugComponent.h"
 //Engine
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "InputMappingContext.h"
-#include "Character/Component/HuruDebugComponent.h"
 
 void AHuruPlayerController::OnPossess(APawn* NewPawn)
 {
@@ -23,7 +23,12 @@ void AHuruPlayerController::OnPossess(APawn* NewPawn)
 	SetupInputs();
 
 	if (!IsValid(PossessedCharacter)) return;
-	
+
+	UHuruDebugComponent* DebugComp = Cast<UHuruDebugComponent>(PossessedCharacter->GetComponentByClass(UHuruDebugComponent::StaticClass()));
+	if (DebugComp)
+	{
+		DebugComp->OnPlayerControllerInitialized(this);
+	}
 }
 
 void AHuruPlayerController::OnRep_Pawn()
@@ -34,6 +39,12 @@ void AHuruPlayerController::OnRep_Pawn()
 	SetupInputs();
 	
 	if (!PossessedCharacter) return;
+
+	UHuruDebugComponent* DebugComp = Cast<UHuruDebugComponent>(PossessedCharacter->GetComponentByClass(UHuruDebugComponent::StaticClass()));
+	if (DebugComp)
+	{
+		DebugComp->OnPlayerControllerInitialized(this);
+	}
 }
 
 void AHuruPlayerController::SetupInputComponent()
@@ -48,6 +59,7 @@ void AHuruPlayerController::SetupInputComponent()
 		EnhancedInputComponent->ClearDebugKeyBindings();
 
 		BindActions(DefaultInputMappingContext);
+		BindActions(DebugInputMappingContext);
 	}
 }
 
@@ -82,6 +94,13 @@ void AHuruPlayerController::SetupInputs()
 			FModifyContextOptions Options;
 			Options.bForceImmediately = 1;
 			Subsystem->AddMappingContext(DefaultInputMappingContext, 1, Options);
+			UHuruDebugComponent* DebugComp = Cast<UHuruDebugComponent>(PossessedCharacter->GetComponentByClass
+			(UHuruDebugComponent::StaticClass()));
+			if (DebugComp)
+			{
+				// Do only if we have debug component
+				Subsystem->AddMappingContext(DebugInputMappingContext, 0, Options);
+			}
 		}
 	}
 }
