@@ -5,8 +5,7 @@
 
 #include "Character/HuruBaseCharacter.h"
 
-void UHuruNotifyStateMovementAction::NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation,
-                                                 float TotalDuration, const FAnimNotifyEventReference& EventReference)
+void UHuruNotifyStateMovementAction::NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, float TotalDuration, const FAnimNotifyEventReference& EventReference)
 {
 	Super::NotifyBegin(MeshComp, Animation, TotalDuration, EventReference);
 
@@ -17,8 +16,7 @@ void UHuruNotifyStateMovementAction::NotifyBegin(USkeletalMeshComponent* MeshCom
 	}
 }
 
-void UHuruNotifyStateMovementAction::NotifyEnd(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation,
-											  const FAnimNotifyEventReference& EventReference)
+void UHuruNotifyStateMovementAction::NotifyEnd(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, const FAnimNotifyEventReference& EventReference)
 {
 	Super::NotifyEnd(MeshComp, Animation, EventReference);
 
