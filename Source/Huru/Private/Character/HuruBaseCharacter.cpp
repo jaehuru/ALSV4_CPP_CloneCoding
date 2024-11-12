@@ -135,7 +135,7 @@ void AHuruBaseCharacter::RagdollStart()
 	}
 
 	// 네트워크 상황에서 클라이언트의 움직임 오류 체크 비활성화
-	MyCharacterMovementComponent->bIgnoreClientMovementErrorChecksAndCorrection = true;
+	MyCharacterMovementComponent->bIgnoreClientMovementErrorChecksAndCorrection = 1;
 
 	// 전용 서버에서의 메쉬 애니메이션 최적화 설정
 	if (UKismetSystemLibrary::IsDedicatedServer(GetWorld()))
@@ -1302,7 +1302,7 @@ void AHuruBaseCharacter::WalkAction_Implementation()
 
 void AHuruBaseCharacter::RagdollAction_Implementation()
 {
-	if (GetMovementState() == EHuruMovementState::Ragdoll)
+	if (GetMovementState() != EHuruMovementState::Ragdoll)
 	{
 		ReplicatedRagdollStart(); // Ragdoll 시작을 서버에 알림
 	}
