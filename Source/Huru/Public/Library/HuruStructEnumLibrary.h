@@ -273,6 +273,96 @@ public:
 };
 
 USTRUCT(BlueprintType)
+struct FHuruOverlayState
+{
+	GENERATED_BODY()
+
+private:
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = true), Category = "ALS|Character States")
+	EHuruOverlayState State = EHuruOverlayState::Default;
+
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = true), Category = "ALS|Character States")
+	bool Default_ = true;
+
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = true), Category = "ALS|Character States")
+	bool Masculine_ = false;
+
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = true), Category = "ALS|Character States")
+	bool Feminine_ = false;
+
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = true), Category = "ALS|Character States")
+	bool Injured_ = false;
+
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = true), Category = "ALS|Character States")
+	bool HandsTied_ = false;
+
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = true), Category = "ALS|Character States")
+	bool Rifle_ = false;
+
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = true), Category = "ALS|Character States")
+	bool PistolOneHanded_ = false;
+
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = true), Category = "ALS|Character States")
+	bool PistolTwoHanded_ = false;
+
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = true), Category = "ALS|Character States")
+	bool Bow_ = false;
+
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = true), Category = "ALS|Character States")
+	bool Torch_ = false;
+
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = true), Category = "ALS|Character States")
+	bool Binoculars_ = false;
+
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = true), Category = "ALS|Character States")
+	bool Box_ = false;
+
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = true), Category = "ALS|Character States")
+	bool Barrel_ = false;
+
+public:
+	FHuruOverlayState()
+	{
+	}
+
+	FHuruOverlayState(const EHuruOverlayState InitialState) { *this = InitialState; }
+
+	const bool& Default() const { return Default_; }
+	const bool& Masculine() const { return Masculine_; }
+	const bool& Feminine() const { return Feminine_; }
+	const bool& Injured() const { return Injured_; }
+	const bool& HandsTied() const { return HandsTied_; }
+	const bool& Rifle() const { return Rifle_; }
+	const bool& PistolOneHanded() const { return PistolOneHanded_; }
+	const bool& PistolTwoHanded() const { return PistolTwoHanded_; }
+	const bool& Bow() const { return Bow_; }
+	const bool& Torch() const { return Torch_; }
+	const bool& Binoculars() const { return Binoculars_; }
+	const bool& Box() const { return Box_; }
+	const bool& Barrel() const { return Barrel_; }
+
+	operator EHuruOverlayState() const { return State; }
+
+	void operator=(const EHuruOverlayState NewAction)
+	{
+		State = NewAction;
+		Default_ = State == EHuruOverlayState::Default;
+		Masculine_ = State == EHuruOverlayState::Masculine;
+		Feminine_ = State == EHuruOverlayState::Feminine;
+		Injured_ = State == EHuruOverlayState::Injured;
+		HandsTied_ = State == EHuruOverlayState::HandsTied;
+		Rifle_ = State == EHuruOverlayState::Rifle;
+		PistolOneHanded_ = State == EHuruOverlayState::PistolOneHanded;
+		PistolTwoHanded_ = State == EHuruOverlayState::PistolTwoHanded;
+		Bow_ = State == EHuruOverlayState::Bow;
+		Torch_ = State == EHuruOverlayState::Torch;
+		Binoculars_ = State == EHuruOverlayState::Binoculars;
+		Box_ = State == EHuruOverlayState::Box;
+		Barrel_ = State == EHuruOverlayState::Barrel;
+	}
+};
+
+USTRUCT(BlueprintType)
 struct FHuruGroundedEntryState
 {
 	GENERATED_BODY()

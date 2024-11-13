@@ -55,6 +55,9 @@ public:
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Read Only Data|Character Information")
 	FHuruStance Stance = EHuruStance::Standing;
 
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Read Only Data|Character Information")
+	FHuruOverlayState OverlayState = EHuruOverlayState::Default;
+
 #pragma endregion
 
 #pragma region Anim Graph - Grounded

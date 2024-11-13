@@ -299,6 +299,32 @@ void AHuruPlayerController::DebugToggleSlomoAction(const FInputActionValue& Valu
 	}
 }
 
+void AHuruPlayerController::DebugOpenOverlayMenuAction(const FInputActionValue& Value)
+{
+	if (PossessedCharacter)
+	{
+		UHuruDebugComponent* DebugComp = Cast<UHuruDebugComponent>(PossessedCharacter->GetComponentByClass(UHuruDebugComponent::StaticClass
+		()));
+		if (DebugComp)
+		{
+			DebugComp->OpenOverlayMenu(Value.Get<bool>());
+		}
+	}
+}
+
+void AHuruPlayerController::DebugOverlayMenuCycleAction(const FInputActionValue& Value)
+{
+	if (PossessedCharacter)
+	{
+		UHuruDebugComponent* DebugComp = Cast<UHuruDebugComponent>(PossessedCharacter->GetComponentByClass(UHuruDebugComponent::StaticClass
+		()));
+		if (DebugComp)
+		{
+			DebugComp->OverlayMenuCycle(Value.GetMagnitude() > 0);
+		}
+	}
+}
+
 
 
 

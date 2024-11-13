@@ -115,6 +115,12 @@ protected:
 	UFUNCTION()
 	void DebugToggleSlomoAction(const FInputActionValue& Value);
 
+	UFUNCTION()
+	void DebugOpenOverlayMenuAction(const FInputActionValue& Value);
+
+	UFUNCTION()
+	void DebugOverlayMenuCycleAction(const FInputActionValue& Value);
+
 #pragma endregion
 	
 };

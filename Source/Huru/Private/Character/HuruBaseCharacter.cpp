@@ -123,6 +123,7 @@ void AHuruBaseCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& O
 	DOREPLIFETIME_CONDITION(AHuruBaseCharacter, DesiredRotationMode, COND_SkipOwner);
 
 	DOREPLIFETIME_CONDITION(AHuruBaseCharacter, RotationMode, COND_SkipOwner);
+	DOREPLIFETIME_CONDITION(AHuruBaseCharacter, OverlayState, COND_SkipOwner);
 	DOREPLIFETIME_CONDITION(AHuruBaseCharacter, ViewMode, COND_SkipOwner);
 }
 
@@ -525,6 +526,11 @@ void AHuruBaseCharacter::GetCameraParameters(float& TPFOVOut, float& FPFOVOut, b
 
 void AHuruBaseCharacter::OnOverlayStateChanged(const EHuruOverlayState PreviousState)
 {
+}
+
+void AHuruBaseCharacter::SetOverlayOverrideState(int32 NewState)
+{
+	OverlayOverrideState = NewState;
 }
 
 void AHuruBaseCharacter::SetOverlayState(EHuruOverlayState NewState, bool bForce)
@@ -1114,6 +1120,7 @@ void AHuruBaseCharacter::ForceUpdateCharacterState()
 	SetStance(DesiredStance, true);
 	SetRotationMode(DesiredRotationMode, true);
 	SetViewMode(ViewMode, true);
+	SetOverlayState(OverlayState, true);
 	SetMovementState(MovementState, true);
 	SetMovementAction(MovementAction, true);
 }

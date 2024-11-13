@@ -136,6 +136,12 @@ public:
 	EHuruViewMode GetViewMode() const { return ViewMode; }
 
 	UFUNCTION(BlueprintCallable, Category = "Huru|Character States")
+	void SetOverlayOverrideState(int32 NewState);
+
+	UFUNCTION(BlueprintGetter, Category = "Huru|Character States")
+	int32 GetOverlayOverrideState() const { return OverlayOverrideState; }
+
+	UFUNCTION(BlueprintCallable, Category = "Huru|Character States")
 	void SetOverlayState(EHuruOverlayState NewState, bool bForce = false);
 	
 	UFUNCTION(BlueprintCallable, Server, Reliable, Category = "Huru|Character States")
@@ -455,6 +461,9 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Huru|State Values", ReplicatedUsing = OnRep_ViewMode)
 	EHuruViewMode ViewMode = EHuruViewMode::ThirdPerson;
+
+	UPROPERTY(BlueprintReadOnly, Category = "ALS|State Values")
+	int32 OverlayOverrideState = 0;
 	
 #pragma endregion
 

@@ -55,6 +55,18 @@ UENUM(BlueprintType, meta = (ScriptName = "Huru_OverlayState"))
 enum class EHuruOverlayState : uint8
 {
 	Default,
+	Masculine,
+	Feminine,
+	Injured,
+	HandsTied,
+	Rifle,
+	PistolOneHanded,
+	PistolTwoHanded,
+	Bow,
+	Torch,
+	Binoculars,
+	Box,
+	Barrel
 };
 
 /** 캐릭터 회전 모드. note: 새로운 열거형을 추가할 경우 HuruStructEnumLibrary의 관련 구조체도 수정해야 함s*/

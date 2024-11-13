@@ -265,3 +265,63 @@ struct FHuruRotateInPlaceAsset
 	UPROPERTY(EditAnywhere, Category = "Rotation System")
 	float FastPlayRate = 1.0f;
 };
+
+USTRUCT(BlueprintType)
+struct FHuruHitFX : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, Category = "Surface")
+	TEnumAsByte<enum EPhysicalSurface> SurfaceType = EPhysicalSurface::SurfaceType_Default;
+
+	UPROPERTY(EditAnywhere, Category = "Sound")
+	TSoftObjectPtr<USoundBase> Sound = nullptr;
+
+	UPROPERTY(EditAnywhere, Category = "Sound")
+	EHuruSpawnType SoundSpawnType = EHuruSpawnType::Location;
+
+	UPROPERTY(EditAnywhere, Category = "Sound", meta = (EditCondition = "SoundSpawnType == EHuruSpawnType::Attached"))
+	TEnumAsByte<enum EAttachLocation::Type> SoundAttachmentType = EAttachLocation::KeepRelativeOffset;
+
+	UPROPERTY(EditAnywhere, Category = "Sound")
+	FVector SoundLocationOffset = FVector::ZeroVector;
+
+	UPROPERTY(EditAnywhere, Category = "Sound")
+	FRotator SoundRotationOffset = FRotator::ZeroRotator;
+
+	UPROPERTY(EditAnywhere, Category = "Decal")
+	TSoftObjectPtr<UMaterialInterface> DecalMaterial = nullptr;
+
+	UPROPERTY(EditAnywhere, Category = "Decal")
+	EHuruSpawnType DecalSpawnType = EHuruSpawnType::Location;
+
+	UPROPERTY(EditAnywhere, Category = "Decal", meta = (EditCondition = "DecalSpawnType == EHuruSpawnType::Attached"))
+	TEnumAsByte<enum EAttachLocation::Type> DecalAttachmentType = EAttachLocation::KeepRelativeOffset;
+
+	UPROPERTY(EditAnywhere, Category = "Decal")
+	float DecalLifeSpan = 10.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Decal")
+	FVector DecalSize = FVector::ZeroVector;
+
+	UPROPERTY(EditAnywhere, Category = "Decal")
+	FVector DecalLocationOffset = FVector::ZeroVector;
+
+	UPROPERTY(EditAnywhere, Category = "Decal")
+	FRotator DecalRotationOffset = FRotator::ZeroRotator;
+
+	UPROPERTY(EditAnywhere, Category = "Niagara")
+	TSoftObjectPtr<UNiagaraSystem> NiagaraSystem = nullptr;
+
+	UPROPERTY(EditAnywhere, Category = "Niagara")
+	EHuruSpawnType NiagaraSpawnType = EHuruSpawnType::Location;
+
+	UPROPERTY(EditAnywhere, Category = "Niagara", meta = (EditCondition = "NiagaraSpawnType == EHuruSpawnType::Attached"))
+	TEnumAsByte<enum EAttachLocation::Type> NiagaraAttachmentType = EAttachLocation::KeepRelativeOffset;
+
+	UPROPERTY(EditAnywhere, Category = "Niagara")
+	FVector NiagaraLocationOffset = FVector::ZeroVector;
+
+	UPROPERTY(EditAnywhere, Category = "Niagara")
+	FRotator NiagaraRotationOffset = FRotator::ZeroRotator;
+};
