@@ -7,7 +7,8 @@
 - ' DotNet SDK version 6.0.302 '
 
 ## 주요기능
-- ' ALSV4 C++ locomotion UE5_Mannequin 리타겟팅 '
+- ' ALSV4 C++ Clone Coding '
+- ' ALSV4 locomotion UE5_Mannequin 리타겟팅 '
 - ...Climbing, Swimming, Overlay 등등 차후 커스텀해갈 예정
 
 ## 기억에 남는 버그들
