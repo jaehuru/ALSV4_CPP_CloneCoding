@@ -1,5 +1,5 @@
 # ALSV4_CPP_CloneCoding
-동영상 링크 : [[https://youtu.be/nxL09XYgOo4](https://youtu.be/RvJIIwIDNOU)](https://www.youtube.com/watch?v=RvJIIwIDNOU)
+동영상 링크 : https://www.youtube.com/watch?v=RvJIIwIDNOU
 
 ## 개발환경
 - ' UE5.4 '
