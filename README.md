@@ -2,7 +2,7 @@
 동영상 링크 : https://www.youtube.com/watch?v=RvJIIwIDNOU
 
 ## 개발환경
-- ' UE5.4 '
+- ' UE5.4.4 '
 - ' Jetbrain Rider '
 - ' DotNet SDK version 6.0.302 '
 
