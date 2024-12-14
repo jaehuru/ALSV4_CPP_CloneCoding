@@ -4,7 +4,7 @@
 ## 개발환경
 - ' UE5.4.4 '
 - ' Jetbrain Rider '
-- ' DotNet SDK version 6.0.302 '
+- ' Window '
 
 ## 주요기능
 - ' ALSV4 C++ Clone Coding '
